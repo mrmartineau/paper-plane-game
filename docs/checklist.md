@@ -22,7 +22,7 @@ Tracks [paper-plane-game-plan.md](./paper-plane-game-plan.md). Tick items as the
 - [x] Crash → plane scrunches into a paper ball that rolls downhill → respawn nearby → fold open (`src/plane/crash.ts`)
 - [x] Controls card: keyboard button bottom-left (native popover), opens on start, `?` / `H` toggles (`src/ui/help.ts`)
 - [x] lil-gui dev panel behind `?debug`, with live telemetry, "go to updraft" and "go to arch" (`src/debug.ts`)
-- [x] HUD, `U` toggles: compass, height, speed, climb rate, stall flag, flight time, distance, time in lift, loops, best height, top speed, crashes (`src/ui/hud.ts`, `src/ui/stats.ts`)
+- [x] Cockpit HUD, `U` toggles: artificial horizon + pitch ladder, roll scale, speed and height tapes, climb bar (warm in lift, blue in sink), STALL / BOOST warnings, compass tape; stats card: flight time, distance, time in lift, loops, hoops, best height, top speed, crashes, wind (`src/ui/hud.ts`, `src/ui/stats.ts`)
 - [x] Unit tests: steady glide, stall recovery, dive/climb, bank + auto-level, full loop, rising/sinking air, crash; height, air and prop determinism; prop collision and arch lanes; loop counter
 - [x] **Feel review (you):** approved ("it looks good, continue with the plan")
 

@@ -287,6 +287,8 @@ const qa = new THREE.Quaternion();
 const qb = new THREE.Quaternion();
 const fwd = new THREE.Vector3();
 const vel = new THREE.Vector3();
+const planeRight = new THREE.Vector3();
+const planeUp = new THREE.Vector3();
 const shake = new THREE.Quaternion();
 const shakeEuler = new THREE.Euler();
 
@@ -391,6 +393,17 @@ function render(alpha: number, frameDt: number) {
 			climb: state.velocity.y,
 			air: airHere,
 			stalling: flying && telemetry.lift < 0.9,
+			boosting,
+			// Attitude from the plane's axes: pitch of the nose, bank of the wings.
+			pitch: THREE.MathUtils.radToDeg(
+				Math.asin(THREE.MathUtils.clamp(fwd.y, -1, 1)),
+			),
+			roll: THREE.MathUtils.radToDeg(
+				Math.atan2(
+					-planeRight.set(1, 0, 0).applyQuaternion(plane.mesh.quaternion).y,
+					planeUp.set(0, 1, 0).applyQuaternion(plane.mesh.quaternion).y,
+				),
+			),
 			wind: wind.at(time),
 		},
 		time,

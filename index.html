@@ -90,22 +90,14 @@
       }
       .course[hidden] { display: none; }
       .flight {
-        position: fixed; right: 16px; bottom: 16px; padding: 12px 14px; min-width: 190px;
+        position: fixed; right: 16px; bottom: 16px; padding: 10px 12px; min-width: 170px; font-size: 12px;
       }
-      .big { display: flex; gap: 18px; }
-      .big div { display: grid; }
-      .big strong { font-size: 30px; line-height: 1; font-weight: 650; }
       .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft); }
-      .vario { margin: 8px 0 10px; font-weight: 600; }
-      .vario[data-air="up"] { color: #c0702f; }
-      .vario[data-air="down"] { color: #4f7fb3; }
-      .stall { margin-left: 8px; padding: 1px 6px; border-radius: 3px; background: #c0702f; color: #fff; font-size: 11px; }
-      .stats { display: grid; grid-template-columns: auto auto; gap: 3px 14px; margin: 0; padding-top: 8px; border-top: 1px dashed var(--paper-edge); }
+      .stats { display: grid; grid-template-columns: auto auto; gap: 3px 14px; margin: 0; }
       #hud .stats dt { color: var(--ink-soft); }
       #hud .stats dd { margin: 0; text-align: right; }
       @media (max-width: 520px) {
-        .flight { min-width: 0; padding: 10px; }
-        .stats { display: none; }
+        .flight { display: none; } /* the cockpit HUD carries speed and height */
       }
 
       /* Pause button, touch stick, boost button */
@@ -131,8 +123,7 @@
       }
       #stick-knob { margin: -24px 0 0 -24px; width: 48px; height: 48px; background: rgb(251 248 241 / 0.85); }
       @media (pointer: coarse) {
-        .flight { top: 16px; right: 16px; bottom: auto; }
-        .stats { display: none; }
+        .flight { display: none; } /* room for thumbs; the cockpit HUD carries speed and height */
       }
 
       /* Pause menu */
@@ -156,6 +147,27 @@
       }
       #menu button.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); width: 100%; }
       #menu .note { color: var(--ink-soft); font-size: 12px; }
+
+      /* Cockpit HUD: horizon, pitch ladder, speed and height tapes */
+      #flight-hud {
+        position: fixed; left: 50%; top: 50%; translate: -50% -58%; /* sits above the plane */
+        width: min(560px, 94vw); height: auto; pointer-events: none; overflow: visible;
+        font: 600 12px/1 system-ui, sans-serif; font-variant-numeric: tabular-nums;
+        filter: drop-shadow(0 0 1.5px rgb(30 40 45 / 0.55));
+      }
+      #flight-hud .line { stroke: #fffdf6; stroke-width: 1.6; fill: none; stroke-linecap: round; }
+      #flight-hud .thin { stroke: #fffdf6; stroke-width: 1; fill: none; opacity: 0.8; }
+      #flight-hud text { fill: #fffdf6; }
+      #flight-hud .box { fill: rgb(40 50 55 / 0.55); stroke: #fffdf6; stroke-width: 1.4; }
+      #flight-hud .big { font-size: 17px; }
+      #flight-hud .label { font-size: 10px; letter-spacing: 0.08em; opacity: 0.85; }
+      #flight-hud .warn { fill: #ffb36b; }
+      #flight-hud .lift { fill: #ffb36b; }
+      #flight-hud .sink { fill: #9cc4ec; }
+      #flight-hud .alert { fill: #e8745a; stroke: #fffdf6; stroke-width: 1.4; }
+      #flight-hud [data-blink] { animation: blink 0.6s steps(2) infinite; }
+      @keyframes blink { 50% { opacity: 0.2; } }
+      @media (prefers-reduced-motion: reduce) { #flight-hud [data-blink] { animation: none; } }
     </style>
   </head>
   <body>
@@ -219,12 +231,8 @@
         <div class="compass-tape"></div>
         <span data-hud="heading">0°</span>
       </div>
-      <section class="flight card" aria-label="Flight information">
-        <div class="big">
-          <div><span class="label">Height</span><span><strong data-hud="altitude">0</strong> m</span></div>
-          <div><span class="label">Speed</span><span><strong data-hud="speed">0</strong> km/h</span></div>
-        </div>
-        <div class="vario"><span data-hud="vario">• 0.0 m/s</span><span class="stall" data-hud="stall" hidden>Stall</span></div>
+      <svg id="flight-hud" viewBox="0 0 560 340" aria-hidden="true"></svg>
+      <section class="flight card" aria-label="Flight stats">
         <dl class="stats">
           <dt>Flight time</dt><dd data-hud="flightTime">0:00</dd>
           <dt>Distance</dt><dd data-hud="distance">0 m</dd>
