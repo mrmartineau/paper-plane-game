@@ -16,7 +16,7 @@ A calm browser game. You fly an origami paper plane over an endless, procedurall
 
 ## Stack
 
-- Bun, Vite, TypeScript (strict)
+- pnpm, Vite, TypeScript (strict)
 - Three.js (vanilla, no R3F, to keep the game loop simple)
 - `simplex-noise` + `alea` (seeded PRNG)
 - Biome for lint/format
@@ -81,12 +81,10 @@ src/
 ## Core systems
 
 ### Game loop
-
 - Fixed 60Hz update with an accumulator. Render each frame, interpolating between states.
 - Clamp delta when the tab regains focus. Pause on `visibilitychange`.
 
 ### World generation
-
 - World coords are in metres. Chunks are 128m × 128m, with 64×64 quads at LOD0.
 - `height(x, z)`: FBM simplex (5 octaves) with a light domain warp, then a ridged layer blended in by a mountain mask noise.
 - `biome(x, z)`: from two low-frequency noises (temperature, moisture), plus height for snow and water.
@@ -99,7 +97,6 @@ src/
 - Fog colour matches the sky so the draw distance edge is hidden.
 
 ### Papercraft rendering
-
 - Flat shading: compute normals per face (non-indexed geometry, or `flatShading`).
 - `paperMaterial`: extend `MeshLambertMaterial` via `onBeforeCompile`:
   - fine paper grain (tileable noise in world space, triplanar for slopes)
@@ -115,16 +112,13 @@ src/
 - Shadows: one directional sun, PCFSoft shadow map that follows the player. These shadows are most of the paper look, so tune them early.
 
 ### Plane
-
 - Origami dart geometry: 6–8 triangles, two-tone paper (white with a faint fold line).
 - Flutter: small vertex wobble on the wing tips, scaled with speed.
 
 ### Flight model (arcade, `plane/flight.ts`, pure function)
-
 State: position, velocity, orientation (quaternion), airspeed.
 
 Per step:
-
 1. Apply input: roll rate and pitch rate, with smoothing. Auto-level roll gently when there's no input.
 2. Bank turns the plane: yaw rate ∝ sin(roll) × airspeed.
 3. Gravity pulls down. Lift ∝ airspeed² × liftCoeff, along the plane's up vector, capped.
@@ -137,19 +131,16 @@ Per step:
 All constants live in `config.ts`. Add a dev panel (lil-gui behind `?debug`) to tweak them live.
 
 ### Thermals & wind
-
 - Wind: a global vector whose direction and strength drift slowly over time (low-freq noise).
 - Thermals: 0–2 per chunk, seeded. More over desert and meadow. Each has a radius, strength and top height.
 - Visual cues: circling paper birds plus rising dust/paper-confetti particles.
 
 ### Camera
-
 - Chase cam behind and above the plane. Lerp position, slerp rotation.
 - FOV widens with speed (e.g. 60 → 75).
 - Avoid clipping into terrain: raise the camera above `height(x, z) + margin`.
 
 ### Courses
-
 - `generate.ts`: per region (e.g. every 4×4 chunks) the seed decides whether a course exists. If so, build a Catmull-Rom spline of 10–20 points that follows the terrain at a sensible altitude, and place rings along it.
 - Ring = folded paper torus/octagon. Pass detection: segment (previous position → current position) vs ring disc.
 - Start gate: a larger, flagged ring that's visible from a distance.
@@ -157,7 +148,6 @@ All constants live in `config.ts`. Add a dev panel (lil-gui behind `?debug`) to 
 - Ghost: record a transform every 100ms and store it compressed in localStorage, keyed by `seed:courseId`. Play it back as a translucent plane.
 
 ### Input
-
 - Unified `InputState` with pitch and roll in [-1, 1].
 - Desktop: mouse (pointer lock, relative movement) or WASD/arrow keys.
 - Mobile: tilt by default. On iOS, call `DeviceOrientationEvent.requestPermission()` on first tap. Calibrate "neutral" on start. Fall back to the virtual stick if permission is denied.
@@ -165,13 +155,11 @@ All constants live in `config.ts`. Add a dev panel (lil-gui behind `?debug`) to 
 - Settings: invert pitch, sensitivity.
 
 ### Quality tiers
-
 - Tiers: low / medium / high. Pick one from `devicePixelRatio`, `navigator.hardwareConcurrency` and a short startup benchmark.
 - Each tier sets chunk radius, shadow map size, prop density, cloud count and pixel ratio cap.
 - Adaptive: if the frame-time p90 stays > 20ms for 3s, step down the pixel ratio, then the tier.
 
 ### UI
-
 - Zen: no HUD. A tap or Esc opens the pause menu.
 - Pause menu: resume, settings (quality, controls, invert, audio), seed (copy share link, new seed), photo mode.
 - Course HUD: timer, rings passed/total, ghost delta.
@@ -179,7 +167,6 @@ All constants live in `config.ts`. Add a dev panel (lil-gui behind `?debug`) to 
 - Seed lives in the URL: `?seed=abc123`.
 
 ### Audio
-
 - Wind: filtered noise. Gain and cutoff follow airspeed.
 - Soft paper rustle on sharp turns, a chime for each ring, a crumple sound on crash.
 - Start audio after the first user gesture.
@@ -189,7 +176,6 @@ All constants live in `config.ts`. Add a dev panel (lil-gui behind `?debug`) to 
 Each phase ends playable. Don't start the next until the acceptance criteria pass.
 
 ### Phase 1: flight feel
-
 - Vite + TS + Three scaffold, Biome, Vitest, game loop.
 - Origami plane model, chase cam.
 - A single large static terrain mesh from `height()`, with basic flat shading.
@@ -198,7 +184,6 @@ Each phase ends playable. Don't start the next until the acceptance criteria pas
 - **Done when:** gliding, turning, diving and climbing feel good for 5 minutes with nothing else in the world. Flight model has unit tests (e.g. no input → steady glide descent, stall recovers).
 
 ### Phase 2: endless papercraft world
-
 - Chunk streaming + LOD + disposal.
 - Biomes + vertex colour blending.
 - Paper material (grain, creases, face jitter), sun shadows, fog, sky.
@@ -206,20 +191,17 @@ Each phase ends playable. Don't start the next until the acceptance criteria pas
 - **Done when:** you can fly in a straight line for 10 minutes with no hitches > 50ms on desktop, and memory stays flat.
 
 ### Phase 3: air and atmosphere
-
 - Wind, thermals (with visual cues), ridge lift.
 - Paper clouds.
 - Camera polish (FOV, terrain avoidance).
 - **Done when:** you can stay airborne indefinitely by finding thermals, and they're findable by sight.
 
 ### Phase 4: courses
-
 - Course generation, rings, start gates, pass detection.
 - Timer, HUD, best times, ghost.
 - **Done when:** every seed has several findable courses, and finishing one saves a ghost you can race.
 
 ### Phase 5: mobile
-
 - Touch stick, tilt with iOS permission + calibration, gamepad.
 - Quality tiers + adaptive resolution.
 - Move chunk generation into a Web Worker.
@@ -227,7 +209,6 @@ Each phase ends playable. Don't start the next until the acceptance criteria pas
 - **Done when:** 60fps on a recent iPhone on the medium tier, 30fps+ on a mid-range Android on low, and both control schemes feel good.
 
 ### Phase 6: polish
-
 - Day/night cycle (sun colour, sky gradient, warm paper lanterns at night).
 - Audio.
 - Photo mode.

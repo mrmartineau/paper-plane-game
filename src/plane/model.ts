@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { config } from "../config";
+import { addBarycentric, createPaperMaterial } from "../render/paperMaterial";
 
 // Origami dart: 6 triangles (two-sided material shows the undersides). Nose at -Z. Two-tone paper: white outer wings,
 // slightly shaded inner panels so the fold line reads.
@@ -45,13 +46,17 @@ export function createPlaneModel(): PlaneModel {
 	geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
 	geo.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
 	geo.computeVertexNormals();
+	addBarycentric(geo);
 
 	const mesh = new THREE.Mesh(
 		geo,
-		new THREE.MeshLambertMaterial({
+		createPaperMaterial({
+			grainScale: config.paper.planeGrainScale,
+			objectSpace: true,
 			vertexColors: true,
 			side: THREE.DoubleSide,
-			flatShading: true,
+			emissive: 0xffffff,
+			emissiveIntensity: 0.18, // paper lets a little light through, so the underside isn't grey
 		}),
 	);
 	mesh.castShadow = true;
@@ -77,4 +82,47 @@ export function createPlaneModel(): PlaneModel {
 			attr.needsUpdate = true;
 		},
 	};
+}
+
+/** A scrunched-up paper ball shape: an icosphere with every corner pushed in or out. */
+export function paperBallGeometry(
+	radius: number,
+	detail = 1,
+): THREE.BufferGeometry {
+	const geo = new THREE.IcosahedronGeometry(radius, detail); // non-indexed
+	const pos = geo.getAttribute("position") as THREE.BufferAttribute;
+	const jitter = new Map<string, number>(); // shared corners move together, so no cracks
+	const v = new THREE.Vector3();
+	for (let i = 0; i < pos.count; i++) {
+		v.fromBufferAttribute(pos, i);
+		const key = `${v.x.toFixed(3)},${v.y.toFixed(3)},${v.z.toFixed(3)}`;
+		let k = jitter.get(key);
+		if (k === undefined) {
+			k = 0.7 + Math.random() * 0.5;
+			jitter.set(key, k);
+		}
+		v.multiplyScalar(k);
+		pos.setXYZ(i, v.x, v.y, v.z);
+	}
+	geo.computeVertexNormals();
+	return addBarycentric(geo);
+}
+
+export function paperBallMaterial(): THREE.MeshLambertMaterial {
+	return createPaperMaterial({
+		grainScale: config.paper.planeGrainScale,
+		objectSpace: true,
+		color: 0xf4f1ea,
+		emissive: 0xffffff,
+		emissiveIntensity: 0.15,
+	});
+}
+
+export function createPaperBall(): THREE.Mesh {
+	const mesh = new THREE.Mesh(
+		paperBallGeometry(config.crash.ballRadius),
+		paperBallMaterial(),
+	);
+	mesh.castShadow = true;
+	return mesh;
 }

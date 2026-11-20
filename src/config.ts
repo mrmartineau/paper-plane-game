@@ -15,18 +15,114 @@ export const config = {
 		stallSpeed: 11.8, // below this lift fades out
 		stallNoseDrop: 0.9, // rad/s the nose falls at full stall
 		maxSink: 25, // m/s cap on the stall sink build-up
-		glidePitch: -0.1, // rad; with no pitch input the nose relaxes here
+		glidePitch: -0.1, // rad; with no input (and upright) the nose relaxes here
 		pitchStability: 0.4, // 1/s rate of that relax
-		pitchRate: 1.1, // rad/s at full stick
-		rollRate: 2.0, // rad/s at full stick
-		maxPitch: 1.1, // rad, clamp so the plane never loops or spins
-		maxRoll: 1.1, // rad
-		autoLevel: 1.2, // 1/s roll returns to level with no roll input
+		pitchRate: 1.6, // rad/s at full stick; high enough to loop
+		rollRate: 2.4, // rad/s at full stick
+		autoLevel: 1.2, // 1/s the wings return to level with no input
 		inputSmoothing: 6, // 1/s stick smoothing
-		turnCoeff: 0.045, // yaw rate = turnCoeff * sin(roll) * airspeed
-		boost: 4, // m/s² forward push while boost is held
+		turnCoeff: 0.045, // yaw rate = turnCoeff * sin(bank) * airspeed
+		boost: 6, // m/s² forward push while boost is held
 		maxSpeed: 60,
 		clearance: 0.4, // metres above ground before it counts as a crash
+	},
+
+	// Rising (thermal) and sinking air columns.
+	air: {
+		cellSize: 384, // metres; each cell seeds 0..maxPerCell columns
+		maxPerCell: 1,
+		downChance: 0.35,
+		upMin: 6, // m/s
+		upMax: 10,
+		downMin: 4,
+		downMax: 7,
+		radiusMin: 40,
+		radiusMax: 75,
+		core: 0.55, // share of the radius at full strength, then a smooth falloff to the edge
+		topMin: 180, // metres above the column's base
+		topMax: 320,
+		// visuals
+		visibleRange: 800,
+		maxColumns: 16,
+		particlesPerColumn: 160,
+		particleSize: 1.8,
+		columnOpacity: 0.09,
+		spin: 0.25, // rad/s confetti swirl
+	},
+
+	// Trees, rocks and rock arches. Phase 1: placed once over the whole static terrain.
+	props: {
+		extent: 4096, // metres square, matches world.terrainSize
+		cell: 32, // metres; tree/rock placement and collision grid
+		treeTries: 3, // candidate trees per cell
+		forestScale: 1 / 600, // forest patch noise
+		meadowDensity: 0.06, // tree chance outside forests
+		tallShare: 0.35, // share of forest trees that are tall pines
+		beach: 4, // no trees this close above sea level
+		treeLine: 150, // no trees above this height
+		maxSlope: 0.75,
+		rockChance: 0.08,
+		rockMin: 1.2,
+		rockMax: 7,
+		archCell: 384, // metres; at most one arch or ring per cell
+		archChance: 0.6,
+		archLane: 160, // metres kept clear of trees in front of and behind each arch
+		hoopCell: 220, // metres; at most one hoop per cell
+		hoopChance: 0.55,
+		hoopRadiusMin: 10,
+		hoopRadiusMax: 16,
+		hoopTube: 0.09, // × radius
+		poleChance: 0.4,
+		poleMin: 15, // ring bottom above ground, for hoops on poles
+		poleMax: 40,
+		poleRadius: 0.5,
+		floatMin: 50, // ring bottom above ground, for floating hoops
+		floatMax: 160,
+		hoopLane: 80,
+		skyRockCell: 300, // metres; at most one floating rock cluster per cell
+		skyRockChance: 0.55,
+		skyRockMin: 6, // body radius, metres
+		skyRockMax: 16,
+		skyRockLiftMin: 50, // body above the ground
+		skyRockLiftMax: 160,
+		hoopBob: 0.6, // metres floating hoops bob up and down (visual only)
+		ringChance: 0.35,
+		archScaleMin: 0.8, // × 20m ring radius
+		archScaleMax: 1.4,
+		collisionFactor: 0.8, // colliders a bit smaller than the meshes, so near misses feel fair
+	},
+
+	// Paper birds: flocks on big circles, and a few circling in some thermals. Solid.
+	birds: {
+		flockCell: 640, // metres; at most one flock per cell
+		flockChance: 0.6,
+		flockMin: 4,
+		flockMax: 7,
+		flockRadiusMin: 120, // metres, circle they fly
+		flockRadiusMax: 260,
+		flockLiftMin: 30, // above the highest ground under the circle
+		flockLiftMax: 110,
+		flockSpeed: 11, // m/s
+		flockSpacing: 9, // metres between birds in a line
+		thermalChance: 0.5,
+		thermalSpeed: 8, // m/s
+		size: 3.2, // × a 1.3m wingspan bird; big paper birds are easier to spot (and dodge)
+		hitRadius: 2.4, // metres
+		flapSpeed: 9, // rad/s
+	},
+
+	boostTrail: {
+		count: 60,
+		rate: 28, // paper balls per second while boosting
+		life: 1.6, // seconds
+		size: 0.11, // ball radius, metres
+		inherit: 0.8, // share of the plane's velocity the balls keep
+		drop: 2, // m/s downward kick, so they fall below the camera's line
+		spread: 1.2, // m/s random drift
+		puff: 3, // m/s pushed out behind the plane
+		gravity: 5, // m/s², light paper falls slowly
+		drag: 1.2, // 1/s
+		fovKick: 8, // degrees added while boosting
 	},
 
 	spawn: {
@@ -35,8 +131,13 @@ export const config = {
 	},
 
 	crash: {
-		crumpleTime: 0.9, // seconds
-		foldTime: 0.7, // seconds
+		ballGrow: 0.25, // seconds for the plane to scrunch into a ball
+		rollTime: 2.4, // seconds the ball rolls before respawn
+		foldTime: 0.7, // seconds for the new plane to unfold
+		ballRadius: 0.35, // × plane scale
+		carry: 0.55, // share of the plane's ground speed the ball keeps
+		friction: 0.9, // 1/s
+		slopeAccel: 9, // m/s² per unit slope, so it rolls downhill
 		respawnBack: 40, // metres back along the heading
 	},
 
@@ -60,11 +161,13 @@ export const config = {
 	},
 
 	camera: {
-		distance: 7,
-		height: 2.2,
+		distance: 4.2,
+		height: 1.1,
 		lookAhead: 6,
-		positionLerp: 5, // 1/s
+		positionLerp: 6, // 1/s
 		rotationLerp: 8, // 1/s
+		upLerp: 3, // 1/s camera roll follows the plane in loops
+		airLag: 0.15, // m of camera drop per m/s of rising air, so you see the plane lift
 		fovMin: 60,
 		fovMax: 75,
 		fovSpeedMin: 14, // airspeed at fovMin
@@ -75,10 +178,11 @@ export const config = {
 	},
 
 	plane: {
-		scale: 1,
+		scale: 1.25,
 		flutterAmp: 0.04,
 		flutterFreq: 22, // Hz-ish
 		flutterSpeedRef: 30, // airspeed at full flutter
+		turbulence: 0.012, // rad of shake per m/s of rising or sinking air
 	},
 
 	input: {
@@ -97,6 +201,15 @@ export const config = {
 		ambientIntensity: 1.1,
 		shadowMapSize: 2048,
 		shadowExtent: 60, // metres around the plane
+	},
+
+	paper: {
+		grain: 0.14, // fibre/grain contrast
+		mottle: 0.08, // large soft blotches
+		jitter: 0.08, // per-face brightness variation
+		crease: 0.2, // darkening along triangle edges
+		terrainGrainScale: 0.7, // grain cycles per metre on the land
+		planeGrainScale: 22, // per model unit on the plane and ball
 	},
 };
 

@@ -6,17 +6,160 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Paper Plane</title>
     <style>
+      :root {
+        --paper: #fbf8f1;
+        --paper-edge: #d9d2c2;
+        --ink: #3d4a50;
+        --ink-soft: #6b767b;
+        --warm: #e8a87c;
+        --cool: #8fb3d9;
+      }
       html, body { margin: 0; height: 100%; overflow: hidden; background: #cfe3ea; }
       canvas { display: block; touch-action: none; }
-      #hint {
-        position: fixed; inset: auto 0 24px; text-align: center;
-        font: 14px/1.4 system-ui, sans-serif; color: #3d4a50; pointer-events: none;
-        transition: opacity 1s;
+
+      #help-btn {
+        position: fixed; left: 16px; bottom: 16px;
+        width: 48px; height: 48px; padding: 0;
+        display: grid; place-items: center;
+        background: var(--paper); color: var(--ink);
+        border: 1px solid var(--paper-edge); border-radius: 6px;
+        box-shadow: 0 2px 0 var(--paper-edge), 0 6px 16px rgb(0 0 0 / 0.12);
+        cursor: pointer;
+      }
+      #help-btn:hover { transform: translateY(-1px); }
+      #help-btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+      #help {
+        inset: auto auto 76px 16px; margin: 0;
+        width: min(340px, calc(100vw - 32px)); box-sizing: border-box;
+        padding: 16px 18px;
+        background: var(--paper); color: var(--ink);
+        border: 1px solid var(--paper-edge); border-radius: 6px;
+        box-shadow: 0 2px 0 var(--paper-edge), 0 10px 30px rgb(0 0 0 / 0.15);
+        font: 14px/1.4 system-ui, sans-serif;
+        transform: rotate(-0.6deg);
+      }
+      #help h2 { margin: 0 0 10px; font-size: 19px; line-height: 1.2; }
+      #help h3 { margin: 12px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft); }
+      #help dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0; align-items: center; }
+      #help dt { white-space: nowrap; }
+      #help dd { margin: 0; }
+      #help p { margin: 4px 0 0; }
+      kbd {
+        display: inline-block; min-width: 1.4em; padding: 1px 6px; text-align: center;
+        font: 600 12px/1.5 system-ui, sans-serif; color: var(--ink);
+        background: #fff; border: 1px solid var(--paper-edge); border-bottom-width: 2px; border-radius: 4px;
+      }
+      .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+
+      /* HUD */
+      #hud[hidden] { display: none; }
+      .card {
+        background: color-mix(in srgb, var(--paper) 88%, transparent); color: var(--ink);
+        border: 1px solid var(--paper-edge); border-radius: 6px;
+        box-shadow: 0 2px 0 var(--paper-edge), 0 6px 16px rgb(0 0 0 / 0.1);
+        font: 13px/1.3 system-ui, sans-serif; font-variant-numeric: tabular-nums;
+        pointer-events: none;
+      }
+      .compass {
+        position: fixed; top: 12px; left: 50%; translate: -50% 0;
+        width: min(360px, calc(100vw - 32px)); height: 46px; overflow: hidden;
+        mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent);
+      }
+      .compass-tape { position: absolute; top: 0; left: 50%; height: 100%; will-change: transform; }
+      .tick {
+        position: absolute; top: 10px; width: 1px; height: 7px; background: var(--ink-soft);
+        font-size: 0; translate: -50% 0;
+      }
+      .tick.major {
+        width: auto; height: auto; background: none; top: 9px;
+        font: 600 13px/1 system-ui, sans-serif; color: var(--ink);
+      }
+      /* pointer at the top edge, heading number underneath the tape */
+      .compass::after {
+        content: ""; position: absolute; left: 50%; top: 0; translate: -50% 0;
+        border: 5px solid transparent; border-top-color: var(--warm);
+      }
+      .compass [data-hud="heading"] {
+        position: absolute; left: 50%; bottom: 5px; translate: -50% 0;
+        font-size: 11px; color: var(--ink-soft);
+      }
+      .flight {
+        position: fixed; right: 16px; bottom: 16px; padding: 12px 14px; min-width: 190px;
+      }
+      .big { display: flex; gap: 18px; }
+      .big div { display: grid; }
+      .big strong { font-size: 30px; line-height: 1; font-weight: 650; }
+      .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft); }
+      .vario { margin: 8px 0 10px; font-weight: 600; }
+      .vario[data-air="up"] { color: #c0702f; }
+      .vario[data-air="down"] { color: #4f7fb3; }
+      .stall { margin-left: 8px; padding: 1px 6px; border-radius: 3px; background: #c0702f; color: #fff; font-size: 11px; }
+      .stats { display: grid; grid-template-columns: auto auto; gap: 3px 14px; margin: 0; padding-top: 8px; border-top: 1px dashed var(--paper-edge); }
+      #hud .stats dt { color: var(--ink-soft); }
+      #hud .stats dd { margin: 0; text-align: right; }
+      @media (max-width: 520px) {
+        .flight { min-width: 0; padding: 10px; }
+        .stats { display: none; }
       }
     </style>
   </head>
   <body>
-    <div id="hint">Click to steer with the mouse · WASD / arrows · Space to boost</div>
+    <button id="help-btn" type="button" popovertarget="help" aria-label="Show controls" title="Controls (?)">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+        <rect x="2" y="6" width="20" height="12" rx="2" />
+        <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M6 14h.01M18 14h.01M9 14h6" />
+      </svg>
+    </button>
+
+    <div id="hud">
+      <div class="compass card" aria-hidden="true">
+        <div class="compass-tape"></div>
+        <span data-hud="heading">0°</span>
+      </div>
+      <section class="flight card" aria-label="Flight information">
+        <div class="big">
+          <div><span class="label">Height</span><span><strong data-hud="altitude">0</strong> m</span></div>
+          <div><span class="label">Speed</span><span><strong data-hud="speed">0</strong> km/h</span></div>
+        </div>
+        <div class="vario"><span data-hud="vario">• 0.0 m/s</span><span class="stall" data-hud="stall" hidden>Stall</span></div>
+        <dl class="stats">
+          <dt>Flight time</dt><dd data-hud="flightTime">0:00</dd>
+          <dt>Distance</dt><dd data-hud="distance">0 m</dd>
+          <dt>Time in lift</dt><dd data-hud="liftTime">0:00</dd>
+          <dt>Loops</dt><dd data-hud="loops">0</dd>
+          <dt>Hoops</dt><dd data-hud="hoops">0</dd>
+          <dt>Best height</dt><dd data-hud="bestAltitude">0 m</dd>
+          <dt>Top speed</dt><dd data-hud="topSpeed">0 km/h</dd>
+          <dt>Crashes</dt><dd data-hud="crashes">0</dd>
+        </dl>
+      </section>
+    </div>
+
+    <div id="help" popover>
+      <h2>How to fly</h2>
+      <h3>Keyboard</h3>
+      <dl>
+        <dt><kbd>W</kbd> <kbd>↑</kbd></dt><dd>Nose down</dd>
+        <dt><kbd>S</kbd> <kbd>↓</kbd></dt><dd>Nose up (hold to loop)</dd>
+        <dt><kbd>A</kbd> <kbd>D</kbd> <kbd>←</kbd> <kbd>→</kbd></dt><dd>Bank left / right</dd>
+        <dt><kbd>Space</kbd></dt><dd>Boost</dd>
+        <dt><kbd>?</kbd> <kbd>H</kbd></dt><dd>Show / hide this card</dd>
+        <dt><kbd>U</kbd></dt><dd>Show / hide the flight info</dd>
+      </dl>
+      <h3>Mouse</h3>
+      <dl>
+        <dt>Click</dt><dd>Steer with the mouse</dd>
+        <dt>Move</dt><dd>Pitch and bank</dd>
+        <dt>Hold left button</dt><dd>Boost</dd>
+        <dt><kbd>Esc</kbd></dt><dd>Let go of the mouse</dd>
+      </dl>
+      <h3>Air</h3>
+      <p><span class="swatch" style="background: var(--warm)"></span>Warm confetti rises: fly in to climb.</p>
+      <p><span class="swatch" style="background: var(--cool)"></span>Blue confetti sinks: it pushes you down.</p>
+      <p>Fly through the paper hoops (they turn gold) and the sandstone arches. Dodge the trees, rocks, floating islands and paper birds.</p>
+    </div>
+
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

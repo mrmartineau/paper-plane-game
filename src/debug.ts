@@ -5,13 +5,14 @@ export interface Telemetry {
 	altitude: number; // above ground
 	sink: number;
 	climb: number; // vertical speed
+	air: number; // rising (+) or sinking (-) air here
 	lift: number; // 0..1, < 1 = stalling
 }
 
 /** lil-gui dev panel, loaded only with ?debug. Edits config live. */
 export async function createDevPanel(
 	telemetry: Telemetry,
-	onRespawn: () => void,
+	actions: Record<string, () => void>,
 ) {
 	const { default: GUI } = await import("lil-gui");
 	const gui = new GUI({ title: "Paper Plane dev" });
@@ -20,7 +21,7 @@ export async function createDevPanel(
 	for (const key of Object.keys(telemetry) as (keyof Telemetry)[]) {
 		t.add(telemetry, key).listen().disable().decimals(2);
 	}
-	gui.add({ respawn: onRespawn }, "respawn");
+	for (const name of Object.keys(actions)) gui.add(actions, name);
 
 	const f = gui.addFolder("Flight");
 	const fl = config.flight;
@@ -35,8 +36,6 @@ export async function createDevPanel(
 	f.add(fl, "pitchStability", 0, 3);
 	f.add(fl, "pitchRate", 0, 4);
 	f.add(fl, "rollRate", 0, 6);
-	f.add(fl, "maxPitch", 0.2, 1.5);
-	f.add(fl, "maxRoll", 0.2, 1.5);
 	f.add(fl, "autoLevel", 0, 6);
 	f.add(fl, "inputSmoothing", 0.5, 20);
 	f.add(fl, "turnCoeff", 0, 0.2);
@@ -51,6 +50,7 @@ export async function createDevPanel(
 	c.add(config.camera, "rotationLerp", 0.5, 20);
 	c.add(config.camera, "fovMin", 30, 100);
 	c.add(config.camera, "fovMax", 30, 110);
+	c.add(config.camera, "upLerp", 0, 10);
 
 	const i = gui.addFolder("Input").close();
 	i.add(config.input, "mouseSensitivity", 0.0005, 0.02);
@@ -60,6 +60,7 @@ export async function createDevPanel(
 	const p = gui.addFolder("Plane").close();
 	p.add(config.plane, "flutterAmp", 0, 0.2);
 	p.add(config.plane, "flutterFreq", 0, 60);
+	p.add(config.plane, "scale", 0.5, 3);
 
 	const s = gui.addFolder("Spawn").close();
 	s.add(config.spawn, "altitude", 10, 400);

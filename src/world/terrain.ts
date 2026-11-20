@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { config } from "../config";
+import { addBarycentric, createPaperMaterial } from "../render/paperMaterial";
 import type { HeightFn } from "./height";
 
 // Phase 1: one big static flat-shaded mesh. Phase 2 replaces this with chunk.ts + chunkManager.ts.
@@ -33,10 +34,14 @@ export function createTerrain(height: HeightFn): THREE.Mesh {
 	}
 	geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
 	geo.computeVertexNormals(); // non-indexed → per-face normals → flat shading
+	addBarycentric(geo);
 
 	const mesh = new THREE.Mesh(
 		geo,
-		new THREE.MeshLambertMaterial({ vertexColors: true }),
+		createPaperMaterial({
+			grainScale: config.paper.terrainGrainScale,
+			vertexColors: true,
+		}),
 	);
 	mesh.receiveShadow = true;
 	return mesh;
@@ -44,11 +49,17 @@ export function createTerrain(height: HeightFn): THREE.Mesh {
 
 export function createWater(): THREE.Mesh {
 	const size = config.world.terrainSize;
-	const geo = new THREE.PlaneGeometry(size, size);
+	const geo = new THREE.PlaneGeometry(size, size).toNonIndexed();
 	geo.rotateX(-Math.PI / 2);
+	addBarycentric(geo);
 	const mesh = new THREE.Mesh(
 		geo,
-		new THREE.MeshLambertMaterial({ color: 0x8fb8c9 }),
+		// No crease: the sea is one sheet, its diagonal shouldn't show.
+		createPaperMaterial({
+			grainScale: config.paper.terrainGrainScale,
+			crease: 0,
+			color: 0x8fb8c9,
+		}),
 	);
 	mesh.position.y = config.world.seaLevel;
 	mesh.receiveShadow = true;
