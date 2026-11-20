@@ -149,7 +149,7 @@ export const PLANES: Record<PlaneId, PlaneType> = {
 			rollRate: 4,
 			pitchRate: 2.4,
 			turnCoeff: 0.06,
-			boostAgility: 2,
+			boostAgility: 1,
 		},
 	},
 };

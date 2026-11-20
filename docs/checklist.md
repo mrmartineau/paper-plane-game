@@ -18,7 +18,7 @@ Tracks [paper-plane-game-plan.md](./paper-plane-game-plan.md). Tick items as the
 - [x] Flight model, pure (`src/plane/flight.ts`): quaternion orientation, roll/pitch input with smoothing, auto-level, bank turns, lift capped, speed/height trade, drag ∝ v², gentle stall
 - [x] Loops and rolls (release the stick upside down and it rolls upright)
 - [x] Keyboard input (WASD / arrows, Space = boost)
-- [x] Rocket boost: gravity, stall and sink off while held; fly anywhere, even straight up; 1.6× agility; up to ~340 km/h, speed bleeds off after
+- [x] Rocket boost: gravity, stall and sink off while held; fly anywhere, even straight up; calmer controls (0.75×, turn rate capped above 30 m/s); up to ~340 km/h, speed bleeds off after
 - [x] Boost effects: paper-ball trail, big FOV kick, light camera shake, rocket rumble + hiss
 - [x] Boost fuel: ~6 s tank, refills while gliding (2× in rising air); runs dry → off until 20%; HUD fuel bar (orange when low, red blinking while it refills)
 - [x] Menu → Boost: unlimited boost, tank length (3–15 s), camera shake on/off (`applySettings` in `src/core/settings.ts`)

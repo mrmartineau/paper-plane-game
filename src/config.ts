@@ -21,10 +21,11 @@ export const config = {
 		rollRate: 2.4, // rad/s at full stick
 		autoLevel: 1.2, // 1/s the wings return to level with no input
 		inputSmoothing: 6, // 1/s stick smoothing
-		turnCoeff: 0.045, // yaw rate = turnCoeff * sin(bank) * airspeed
+		turnCoeff: 0.045, // yaw rate = turnCoeff * sin(bank) * min(airspeed, turnSpeedCap)
+		turnSpeedCap: 30, // m/s; above this, banking doesn't turn any harder
 		boost: 32, // m/s² forward push while boost is held (gravity is off while boosting)
 		boostMaxSpeed: 95, // m/s (~340 km/h)
-		boostAgility: 1.6, // pitch and roll rate multiplier while boosting
+		boostAgility: 0.75, // pitch and roll rate multiplier while boosting (calmer at rocket speed)
 		boostSinkDecay: 40, // m/s² any stall sink clears while boosting
 		boostDrain: 1 / 6, // tank per second while boosting (a full tank lasts 6 s)
 		boostRefill: 1 / 12, // tank per second while gliding (12 s to fill)

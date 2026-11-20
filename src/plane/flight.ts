@@ -144,7 +144,7 @@ export function stepFlight(
 	q = qmul(q, qaxis(Z, -roll));
 
 	// 2. Bank turns the plane (rotation about world up).
-	q = qmul(qaxis(Y, c.turnCoeff * r.y * v * dt), q);
+	q = qmul(qaxis(Y, c.turnCoeff * r.y * Math.min(v, c.turnSpeedCap) * dt), q); // capped: fast flight isn't twitchy
 
 	// Glide-angle relax (upright, no pitch input) and stall nose-drop, about a world-horizontal axis.
 	let nose = boost ? 0 : -stall * c.stallNoseDrop * dt;

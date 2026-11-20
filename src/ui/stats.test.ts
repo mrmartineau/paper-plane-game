@@ -29,7 +29,7 @@ function fly(
 
 describe("stats", () => {
 	it("counts loops", () => {
-		expect(fly(4.5, 1, 0, true, 30).loops).toBe(1);
+		expect(fly(7, 1, 0, true, 30).loops).toBe(1);
 	});
 
 	it("does not count a steep turn as a loop", () => {
