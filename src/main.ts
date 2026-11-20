@@ -38,6 +38,7 @@ import { clock, createCoursePanel, pointTo } from "./ui/coursePanel";
 import { setupHelp } from "./ui/help";
 import { createHud } from "./ui/hud";
 import { createMenu } from "./ui/menu";
+import { createPhotoMode } from "./ui/photoMode";
 import { createStats } from "./ui/stats";
 import { blend } from "./world/biomes";
 import { createBirdField } from "./world/birds";
@@ -182,6 +183,17 @@ let nearbyCourses: Course[] = [];
 let nearGate: Best | null | undefined; // best on the start gate you're near (undefined = none near)
 const bench = params.has("bench") ? createBench() : null;
 const sound = createSound();
+const photo = createPhotoMode({
+	renderer,
+	camera,
+	target: () => plane.mesh.position,
+	render: () => renderer.render(scene, camera),
+	onChange: (active) => {
+		if (!active) snapped = false; // back to the chase camera
+	},
+	name: () =>
+		`paper-plane-${seed}-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}`,
+});
 let lastBank = 0;
 
 let state: FlightState = respawnAt(0, 0, 0, groundAt, env.solidAt);
@@ -229,7 +241,7 @@ function gather(x: number, z: number) {
 function update(dt: number) {
 	const i = input.update(dt);
 	if (input.gamepad.start) menu.toggle();
-	if (paused) return;
+	if (paused || photo.active) return;
 	bench?.steer(i, telemetry.altitude, telemetry.climb);
 	prev = state;
 	const fresh = crash.update(dt);
@@ -371,14 +383,16 @@ function render(alpha: number, frameDt: number) {
 		chase.snap(pos, plane.mesh.quaternion);
 		snapped = true;
 	}
-	chase.update(
-		pos,
-		plane.mesh.quaternion,
-		state.airspeed,
-		boosting,
-		flying ? airHere : 0,
-		frameDt,
-	);
+	if (photo.active) photo.update();
+	else
+		chase.update(
+			pos,
+			plane.mesh.quaternion,
+			state.airspeed,
+			boosting,
+			flying ? airHere : 0,
+			frameDt,
+		);
 
 	// Shadow camera follows the plane so the shadow stays sharp.
 	sun.target.position.copy(pos);
@@ -473,6 +487,7 @@ const menu = createMenu({
 		else if (c !== "auto") input.tilt.disable();
 	},
 	onRecalibrate: () => input.tilt.recalibrate(),
+	onPhoto: () => photo.enter(),
 	onResume: () => {
 		if (!isTouchDevice()) renderer.domElement.requestPointerLock();
 	},

@@ -15,8 +15,11 @@ export interface MenuHooks {
 	onControls(c: Controls): void;
 	onRecalibrate(): void;
 	onResume(): void; // e.g. re-lock the mouse
+	onPhoto(): void;
 	seed: string;
 }
+
+const inPhoto = () => document.body.classList.contains("photo");
 
 export function createMenu(hooks: MenuHooks) {
 	const dialog = document.getElementById("menu") as HTMLDialogElement;
@@ -74,6 +77,10 @@ export function createMenu(hooks: MenuHooks) {
 		saveSettings();
 	});
 	$("[data-action=recalibrate]").addEventListener("click", hooks.onRecalibrate);
+	$("[data-action=photo]").addEventListener("click", () => {
+		dialog.close();
+		hooks.onPhoto();
+	});
 
 	const link = (seed: string) => {
 		const url = new URL(location.href);
@@ -116,14 +123,14 @@ export function createMenu(hooks: MenuHooks) {
 
 	document.getElementById("pause-btn")?.addEventListener("click", open);
 	addEventListener("keydown", (e) => {
-		if (dialog.open) return; // the dialog handles Esc itself
+		if (dialog.open || inPhoto()) return; // the dialog handles Esc itself; photo mode has its own Esc
 		if (e.code === "Escape" || e.code === "KeyP") open();
 	});
 	// Releasing the mouse (Esc while it's locked) pauses too.
 	let wasLocked = false;
 	document.addEventListener("pointerlockchange", () => {
 		const locked = document.pointerLockElement !== null;
-		if (wasLocked && !locked) open();
+		if (wasLocked && !locked && !inPhoto()) open();
 		wasLocked = locked;
 	});
 

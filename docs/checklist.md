@@ -94,8 +94,8 @@ Pulled forward because they were one-liners: sun shadow that follows the plane, 
 
 - [x] Day/night cycle (15 min): sky, fog, sun colour and direction, moonlight, stars; lanterns by house doors glow at night; menu: cycle / always day / always night (`src/render/lighting.ts`, `src/render/sky.ts`)
 - [x] Audio, all synthesised (WebAudio): wind (louder/brighter with speed), paper rustle on sharp turns, ring/hoop chimes, finish tune, crumple on crash; starts on first gesture; menu sound toggle + volume (`src/audio/sound.ts`)
-- [ ] Photo mode (orbit cam, PNG save)
-- [ ] Seed sharing (`?seed=` is already read; add copy link + new seed)
+- [x] Photo mode (O, or the menu): sim frozen, UI hidden, orbit camera, Save PNG (`src/ui/photoMode.ts`)
+- [x] Seed sharing: `?seed=` in the URL; menu: fly this seed, new world, copy link
 - [ ] PWA manifest
 - [ ] `?bench` scripted flight with frame-time stats
 - [ ] Deploy to Cloudflare Pages

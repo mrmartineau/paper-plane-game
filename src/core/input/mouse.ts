@@ -6,7 +6,8 @@ export function createMouse(canvas: HTMLElement) {
 	const m = { pitch: 0, roll: 0, boost: false, locked: false, update };
 
 	canvas.addEventListener("click", () => {
-		if (!m.locked) canvas.requestPointerLock();
+		if (!m.locked && !document.body.classList.contains("photo"))
+			canvas.requestPointerLock();
 	});
 	document.addEventListener("pointerlockchange", () => {
 		m.locked = document.pointerLockElement === canvas;
