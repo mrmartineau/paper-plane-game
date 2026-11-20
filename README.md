@@ -1,35 +1,23 @@
-# React + TypeScript + Vite
+# Paper Plane
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A calm browser game. Fly an origami plane over a papercraft landscape.
 
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
-
-Note: This will impact Vite dev & build performances.
-You can also try [the experimental native React Compiler support in plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md#rust-react-compiler) by using `compiler: true` in the plugin options instead of using the Babel plugin.
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```sh
+bun install
+bun run dev      # http://localhost:5173
+bun run test     # vitest
+bun run lint     # biome
+bun run build
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Controls
+
+- **Mouse:** click the game to lock the pointer. Move to steer. Hold left button to boost. Esc to release.
+- **Keys:** W / ↑ nose down, S / ↓ nose up, A D / ← → bank, Space boost.
+
+## URL flags
+
+- `?debug` opens the dev panel: live telemetry and every flight constant.
+- `?seed=abc123` picks the world.
+
+Plan: [docs/paper-plane-game-plan.md](docs/paper-plane-game-plan.md). Progress: [docs/checklist.md](docs/checklist.md).

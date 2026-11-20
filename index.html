@@ -3,11 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>paper-plane</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Paper Plane</title>
+    <style>
+      html, body { margin: 0; height: 100%; overflow: hidden; background: #cfe3ea; }
+      canvas { display: block; touch-action: none; }
+      #hint {
+        position: fixed; inset: auto 0 24px; text-align: center;
+        font: 14px/1.4 system-ui, sans-serif; color: #3d4a50; pointer-events: none;
+        transition: opacity 1s;
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <div id="hint">Click to steer with the mouse · WASD / arrows · Space to boost</div>
+    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

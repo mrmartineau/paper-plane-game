@@ -1,29 +1,28 @@
 {
-  "name": "paper-plane",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "oxlint",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "react": "^19.3.1",
-    "react-dom": "^19.3.1"
-  },
-  "devDependencies": {
-    "@babel/core": "^7.29.7",
-    "@rolldown/plugin-babel": "^0.3.0",
-    "@types/babel__core": "^7.20.5",
-    "@types/node": "^24.19.2",
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
-    "@vitejs/plugin-react": "^6.1.2",
-    "babel-plugin-react-compiler": "^1.0.0",
-    "oxlint": "^1.90.0",
-    "typescript": "~7.0.2",
-    "vite": "^8.3.6"
-  }
+	"name": "paper-plane",
+	"version": "0.0.0",
+	"devDependencies": {
+		"@biomejs/biome": "^2.6.8",
+		"@types/node": "^24.19.2",
+		"@types/three": "^0.187.0",
+		"typescript": "~7.0.2",
+		"vite": "^8.3.6",
+		"vitest": "^5.1.1"
+	},
+	"private": true,
+	"scripts": {
+		"dev": "vite",
+		"build": "tsc -b && vite build",
+		"lint": "biome check",
+		"preview": "vite preview",
+		"format": "biome check --write",
+		"test": "vitest run"
+	},
+	"type": "module",
+	"dependencies": {
+		"alea": "^1.0.1",
+		"lil-gui": "^0.21.0",
+		"simplex-noise": "^4.0.3",
+		"three": "^0.187.0"
+	}
 }
