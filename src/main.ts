@@ -18,6 +18,7 @@ import { createPlaneModel } from "./plane/model";
 import { createAirColumns } from "./render/airColumns";
 import { createBirdMeshes } from "./render/birdMeshes";
 import { createBoostTrail } from "./render/boostTrail";
+import { createFloaterMeshes } from "./render/floaterMeshes";
 import { createHoopMeshes } from "./render/hoopMeshes";
 import { createPropMeshes } from "./render/propMeshes";
 import { setupHelp } from "./ui/help";
@@ -98,6 +99,7 @@ scene.add(createTerrain(height), createWater());
 createPropMeshes(scene, props);
 const hoopMeshes = createHoopMeshes(scene, props.hoops);
 const birdMeshes = createBirdMeshes(scene, birds);
+const floaterMeshes = createFloaterMeshes(scene, props);
 const airColumns = createAirColumns(scene, air.columnsNear);
 const boostTrail = createBoostTrail(scene);
 
@@ -211,6 +213,26 @@ function goToBirds() {
 	);
 	prev = state;
 	snapped = false;
+}
+
+/** Dev: fly past the nearest floating mountain, alongside its vines. */
+function goToFloater() {
+	const f = nearest(props.floaters);
+	if (!f) return;
+	const side = f.R + 30; // aim beside it, not into it
+	lineUp(
+		f.x + Math.cos(f.yaw) * side,
+		f.y - f.H * 0.3,
+		f.z - Math.sin(f.yaw) * side,
+		f.yaw,
+		200,
+	);
+}
+
+/** Dev: face the nearest waterfall from 120m out, level with its middle. */
+function goToWaterfall() {
+	const w = nearest(props.waterfalls);
+	if (w) lineUp(w.x, w.y - w.length * 0.4, w.z, w.yaw, 120);
 }
 
 function goToHoop() {
@@ -346,6 +368,7 @@ function render(alpha: number, frameDt: number) {
 
 	hoopMeshes.update(time);
 	birdMeshes.update(time);
+	floaterMeshes.update(time);
 	renderer.render(scene, camera);
 }
 
@@ -359,4 +382,6 @@ if (params.has("debug"))
 		"go to arch": goToArch,
 		"go to hoop": goToHoop,
 		"go to birds": goToBirds,
+		"go to floating mountain": goToFloater,
+		"go to waterfall": goToWaterfall,
 	});

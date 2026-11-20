@@ -22,7 +22,7 @@ Press `?` or the keyboard button (bottom left) for the controls card.
 
 ## URL flags
 
-- `?debug` opens the dev panel: live telemetry, every flight constant, "go to updraft", "go to arch", "go to hoop" and "go to birds".
+- `?debug` opens the dev panel: live telemetry, every flight constant, and "go to" buttons for an updraft, arch, hoop, birds, floating mountain and waterfall.
 - `?seed=abc123` picks the world.
 
 Plan: [docs/paper-plane-game-plan.md](docs/paper-plane-game-plan.md). Progress: [docs/checklist.md](docs/checklist.md).

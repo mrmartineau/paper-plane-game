@@ -80,11 +80,21 @@ export const config = {
 		floatMax: 160,
 		hoopLane: 80,
 		skyRockCell: 300, // metres; at most one floating rock cluster per cell
-		skyRockChance: 0.55,
+		skyRockChance: 0.7,
 		skyRockMin: 6, // body radius, metres
 		skyRockMax: 16,
 		skyRockLiftMin: 50, // body above the ground
 		skyRockLiftMax: 160,
+		floaterCell: 700, // metres; at most one group of floating mountains per cell
+		floaterChance: 0.65,
+		floaterRadiusMin: 25, // metres
+		floaterRadiusMax: 55,
+		floaterLiftMin: 140, // top surface above the ground
+		floaterLiftMax: 280,
+		waterfallsMax: 2, // per floating mountain
+		vinesMin: 6, // per big floating mountain
+		vinesMax: 16,
+		vineSway: 0.012, // rad (visual only, keep small: the collider doesn't sway)
 		hoopBob: 0.6, // metres floating hoops bob up and down (visual only)
 		ringChance: 0.35,
 		archScaleMin: 0.8, // × 20m ring radius

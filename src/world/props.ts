@@ -28,6 +28,18 @@ export const SHAPES = {
 	arch: { R: 20, r: 4.5 }, // ring radius to the tube centre, tube radius
 	// Floating island at radius 1: grass cap on top, rock body, a spike hanging below.
 	skyRock: { body: 1, spikeR: 0.6, spikeTop: -0.3, spikeLen: 1.8 },
+	// Floating mountain at unit size: flat grassy top at y = 0, radius 1, tapering to a point at y = -1.
+	// [radius, y] from the top edge down to the tip. Scaled by (R, H, R).
+	floater: {
+		profile: [
+			[1, -0.06],
+			[0.93, -0.28],
+			[0.78, -0.52],
+			[0.5, -0.78],
+			[0.12, -0.97],
+			[0, -1],
+		],
+	},
 } as const;
 
 export type TreeKind = "pine" | "tallPine" | "round";
@@ -70,6 +82,49 @@ export interface SkyRock {
 	s: number; // body radius, metres
 	yaw: number;
 	tint: number;
+}
+
+/** A floating mountain: grassy top at y, radius R, a body H tall tapering to a point. */
+export interface Floater {
+	x: number;
+	y: number; // top surface
+	z: number;
+	R: number;
+	H: number;
+	yaw: number;
+	tint: number;
+}
+
+/** A thick vine hanging from a floating island. */
+export interface Vine {
+	x: number;
+	top: number;
+	z: number;
+	length: number;
+	r: number;
+	phase: number;
+}
+
+/** A waterfall pouring off a floating mountain's edge, fading out in mid-air. Not solid. */
+export interface Waterfall {
+	x: number;
+	y: number; // top
+	z: number;
+	yaw: number; // faces outward from the mountain (local +Z)
+	width: number;
+	length: number;
+}
+
+/** Height of a floating mountain's underside at a fraction (0 centre .. 1 edge) of its radius. */
+export function floaterUnderside(fraction: number): number {
+	const pts = SHAPES.floater.profile;
+	for (let i = 0; i < pts.length - 1; i++) {
+		const [r0, y0] = pts[i];
+		const [r1, y1] = pts[i + 1];
+		if (fraction <= r0 && fraction >= r1)
+			return y1 + ((y0 - y1) * (fraction - r1)) / (r0 - r1);
+	}
+	return -1;
 }
 
 /** A paper hoop: floating in the air, or standing on a pole. Fly along local Z through it. */
@@ -279,6 +334,127 @@ export function createProps(
 		}
 	}
 
+	// Some small islands trail a few vines.
+	const vines: Vine[] = [];
+	for (const [i, k] of skyRocks.entries()) {
+		const rand = rngFor(seed, "islandVines", i);
+		const n = Math.floor(rand() * 4);
+		for (let j = 0; j < n; j++) {
+			const a = rand() * Math.PI * 2;
+			const d = rand() * 0.5 * k.s;
+			const length = k.s * lerp(1.5, 4, rand());
+			const x = k.x + Math.cos(a) * d;
+			const z = k.z + Math.sin(a) * d;
+			const top = k.y - 0.3 * k.s;
+			if (top - length < Math.max(height(x, z), seaLevel) + 8) continue;
+			vines.push({
+				x,
+				top,
+				z,
+				length,
+				r: lerp(0.25, 0.5, rand()) * Math.min(2, k.s / 6),
+				phase: rand() * 6,
+			});
+		}
+	}
+
+	// --- Floating mountains (the big ones), with waterfalls and hanging vines ---
+	const floaters: Floater[] = [];
+	const waterfalls: Waterfall[] = [];
+	const treeTops: Tree[] = [];
+	for (let cx = -half; cx < half; cx += p.floaterCell) {
+		for (let cz = -half; cz < half; cz += p.floaterCell) {
+			const rand = rngFor(seed, "floater", cx, cz);
+			if (rand() > p.floaterChance) continue;
+			const ax = cx + rand() * p.floaterCell;
+			const az = cz + rand() * p.floaterCell;
+			const top = lerp(p.floaterLiftMin, p.floaterLiftMax, rand());
+			const count = 1 + Math.floor(rand() * 3); // often a group, like a mountain range in the sky
+			for (let i = 0; i < count; i++) {
+				const shrink = i === 0 ? 1 : lerp(0.4, 0.7, rand());
+				const R = lerp(p.floaterRadiusMin, p.floaterRadiusMax, rand()) * shrink;
+				const H = R * lerp(2.2, 3.4, rand()); // tall pillars, not bowls
+				const a0 = rand() * Math.PI * 2;
+				const dist = i === 0 ? 0 : lerp(90, 180, rand());
+				const x = ax + Math.cos(a0) * dist;
+				const z = az + Math.sin(a0) * dist;
+				let ground = seaLevel;
+				for (let a = 0; a < Math.PI * 2; a += Math.PI / 3) {
+					ground = Math.max(
+						ground,
+						height(x + Math.cos(a) * R, z + Math.sin(a) * R),
+					);
+				}
+				ground = Math.max(ground, height(x, z));
+				const y = Math.max(
+					ground + top + (i === 0 ? 0 : (rand() - 0.5) * 60),
+					ground + H + 30,
+				);
+				const yaw = rand() * Math.PI * 2;
+				const tint = lerp(0.9, 1.08, rand());
+				let inLane = false;
+				for (let a = 0; a < Math.PI * 2 && !inLane; a += Math.PI / 2) {
+					inLane = nearArch(x + Math.cos(a) * R, z + Math.sin(a) * R);
+				}
+				if (inLane || nearArch(x, z)) continue;
+				floaters.push({ x, y, z, R, H, yaw, tint });
+
+				// Trees on top.
+				const nTrees = Math.floor(R / 5);
+				for (let t = 0; t < nTrees; t++) {
+					const ta = rand() * Math.PI * 2;
+					const td = Math.sqrt(rand()) * R * 0.8;
+					const pick = rand();
+					treeTops.push({
+						kind: pick < 0.4 ? "tallPine" : pick < 0.75 ? "pine" : "round",
+						x: x + Math.cos(ta) * td,
+						y: y - 0.3,
+						z: z + Math.sin(ta) * td,
+						s: lerp(0.9, 1.4, rand()),
+						yaw: rand() * Math.PI * 2,
+						tint: lerp(0.85, 1.1, rand()),
+					});
+				}
+
+				// Waterfalls off the edge.
+				const nFalls = Math.floor(rand() * (p.waterfallsMax + 1));
+				for (let w = 0; w < nFalls; w++) {
+					const wa = rand() * Math.PI * 2;
+					waterfalls.push({
+						x: x + Math.cos(wa) * (R + 0.5),
+						y: y - 0.5,
+						z: z + Math.sin(wa) * (R + 0.5),
+						yaw: Math.atan2(Math.cos(wa), Math.sin(wa)), // local +Z points outward
+						width: lerp(0.3, 0.55, rand()) * R,
+						length: H * lerp(1.2, 2, rand()),
+					});
+				}
+
+				// Vines from the underside.
+				const nVines = Math.floor(
+					lerp(p.vinesMin, p.vinesMax, rand()) * shrink,
+				);
+				for (let v = 0; v < nVines; v++) {
+					const va = rand() * Math.PI * 2;
+					const f = lerp(0.25, 0.85, rand());
+					const vx = x + Math.cos(va) * f * R;
+					const vz = z + Math.sin(va) * f * R;
+					const vtop = y + floaterUnderside(f) * H + 2; // tuck the top into the rock
+					const length = H * lerp(0.4, 1.3, rand());
+					if (vtop - length < Math.max(height(vx, vz), seaLevel) + 12) continue;
+					vines.push({
+						x: vx,
+						top: vtop,
+						z: vz,
+						length,
+						r: lerp(0.6, 1.3, rand()),
+						phase: rand() * 6,
+					});
+				}
+			}
+		}
+	}
+
 	// --- Trees and rocks per small cell ---
 	const trees: Tree[] = [];
 	const rocks: Rock[] = [];
@@ -348,6 +524,8 @@ export function createProps(
 			}
 		}
 	}
+
+	trees.push(...treeTops);
 
 	// --- Collision grid ---
 	const grid = new Map<string, Collider[]>();
@@ -445,6 +623,37 @@ export function createProps(
 		);
 	}
 
+	for (const fl of floaters) {
+		// The body tapers to a point: a hanging cone from the top edge to the tip.
+		add(
+			{
+				type: "spike",
+				x: fl.x,
+				z: fl.z,
+				top: fl.y,
+				bottom: fl.y - fl.H,
+				r0: fl.R * f,
+			},
+			fl.x,
+			fl.z,
+			fl.R,
+		);
+	}
+	for (const v of vines) {
+		add(
+			{
+				type: "pole",
+				x: v.x,
+				z: v.z,
+				base: v.top - v.length,
+				top: v.top,
+				r: v.r * f,
+			},
+			v.x,
+			v.z,
+			v.r,
+		);
+	}
 	for (const k of skyRocks) {
 		add(
 			{
@@ -554,7 +763,17 @@ export function createProps(
 		return false;
 	}
 
-	return { trees, rocks, arches, hoops, skyRocks, solidAt };
+	return {
+		trees,
+		rocks,
+		arches,
+		hoops,
+		skyRocks,
+		floaters,
+		vines,
+		waterfalls,
+		solidAt,
+	};
 }
 
 function lerp(a: number, b: number, t: number): number {

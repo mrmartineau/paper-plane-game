@@ -21,7 +21,11 @@ describe("props", () => {
 		expect(props.trees.length).toBeGreaterThan(100);
 		expect(props.rocks.length).toBeGreaterThan(20);
 		expect(props.arches.length).toBeGreaterThan(0);
-		for (const t of props.trees) {
+		const onGround = props.trees.filter(
+			(t) => Math.abs(t.y - height(t.x, t.z)) < 2,
+		);
+		expect(onGround.length).toBeGreaterThan(100);
+		for (const t of onGround) {
 			const h = height(t.x, t.z);
 			expect(h).toBeGreaterThan(config.world.seaLevel + p.beach);
 			expect(h).toBeLessThan(p.treeLine);
@@ -65,6 +69,25 @@ describe("props", () => {
 					height(h.x + Math.sin(h.yaw) * d, h.z + Math.cos(h.yaw) * d),
 				).toBeLessThan(h.y);
 			}
+		}
+	});
+
+	it("floating mountains float, with vines that never reach the ground", () => {
+		const big = createProps(
+			"paper",
+			height,
+			{ ...p, extent: 3000 },
+			config.world.seaLevel,
+		);
+		expect(big.floaters.length).toBeGreaterThan(0);
+		for (const f of big.floaters) {
+			expect(f.y - f.H).toBeGreaterThan(height(f.x, f.z)); // tip above the ground
+			expect(big.solidAt(f.x, f.y - f.H * 0.3, f.z)).toBe(true); // inside the rock
+			expect(big.solidAt(f.x, f.y + 40, f.z)).toBe(false); // above it
+		}
+		for (const v of big.vines) {
+			expect(v.top - v.length).toBeGreaterThan(height(v.x, v.z));
+			expect(big.solidAt(v.x, v.top - v.length / 2, v.z)).toBe(true);
 		}
 	});
 });

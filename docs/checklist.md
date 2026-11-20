@@ -42,6 +42,7 @@ Pulled forward because they were one-liners: sun shadow that follows the plane, 
 - [x] Instanced props: pines, tall pines (to ~35m), round trees in forest patches; rocks on slopes (`src/world/props.ts`, `src/render/propMeshes.ts`)
 - [x] Sandstone arches and standing rings you can fly through, with a clear lane in front and behind
 - [x] Floating rock islands (grass cap, hanging spike), solid
+- [x] Floating mountains (Avatar-style pillars) in groups, with trees on top, paper waterfalls that fade in mid-air, and thick swaying vines (solid) (`src/render/floaterMeshes.ts`)
 - [x] Paper hoops: floating or on poles, clear approach lanes, turn gold when flown through, counted in the HUD
 - [x] Collision with trees, rocks, arches, islands, hoop rims, poles and birds (forgiving: colliders 80% of mesh size)
 - [ ] Houses
