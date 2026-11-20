@@ -434,7 +434,7 @@ function render(alpha: number, frameDt: number) {
 			air: airHere,
 			stalling: flying && telemetry.lift < 0.9,
 			boosting,
-			fuel: state.fuel,
+			fuel: settings.unlimitedBoost ? 1 : state.fuel,
 			boostLocked: state.boostLocked,
 			// Attitude from the plane's axes: pitch of the nose, bank of the wings.
 			pitch: THREE.MathUtils.radToDeg(

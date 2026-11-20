@@ -20,6 +20,7 @@ Tracks [paper-plane-game-plan.md](./paper-plane-game-plan.md). Tick items as the
 - [x] Rocket boost: gravity, stall and sink off while held; fly anywhere, even straight up; 1.6× agility; up to ~340 km/h, speed bleeds off after
 - [x] Boost effects: paper-ball trail, big FOV kick, light camera shake, rocket rumble + hiss
 - [x] Boost fuel: ~6 s tank, refills while gliding (2× in rising air); runs dry → off until 20%; HUD fuel bar (orange when low, red blinking while it refills)
+- [x] Menu → Boost: unlimited boost, tank length (3–15 s), camera shake on/off (`applySettings` in `src/core/settings.ts`)
 - [x] Mouse input (pointer lock, relative stick that re-centres, left button = boost)
 - [x] Crash → plane scrunches into a paper ball that rolls downhill → respawn nearby → fold open (`src/plane/crash.ts`)
 - [x] Controls card: keyboard button bottom-left (native popover), opens on start, `?` / `H` toggles (`src/ui/help.ts`)

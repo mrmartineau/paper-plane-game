@@ -55,6 +55,34 @@ export function createMenu(hooks: MenuHooks) {
 		settings.timeOfDay = timeOfDay.value as TimeOfDay;
 		saveSettings();
 	});
+
+	// Boost
+	const unlimited = $<HTMLInputElement>("[name=unlimited]");
+	const tank = $<HTMLInputElement>("[name=tank]");
+	const tankValue = $<HTMLElement>("[data-tank]");
+	const shake = $<HTMLInputElement>("[name=shake]");
+	const showTank = () => {
+		tankValue.textContent = `${settings.boostSeconds} s`;
+		tank.disabled = settings.unlimitedBoost;
+	};
+	unlimited.checked = settings.unlimitedBoost;
+	tank.value = String(settings.boostSeconds);
+	shake.checked = settings.cameraShake;
+	showTank();
+	unlimited.addEventListener("change", () => {
+		settings.unlimitedBoost = unlimited.checked;
+		saveSettings();
+		showTank();
+	});
+	tank.addEventListener("input", () => {
+		settings.boostSeconds = Number(tank.value);
+		saveSettings();
+		showTank();
+	});
+	shake.addEventListener("change", () => {
+		settings.cameraShake = shake.checked;
+		saveSettings();
+	});
 	seedInput.value = hooks.seed;
 	tierLabel.textContent = hooks.onQuality(settings.quality);
 

@@ -1,3 +1,4 @@
+import { config } from "../config";
 import { storage } from "./storage";
 
 // Player settings, saved in localStorage. The pause menu edits these.
@@ -14,6 +15,9 @@ export interface Settings {
 	audio: boolean;
 	volume: number; // 0 .. 1
 	timeOfDay: TimeOfDay;
+	unlimitedBoost: boolean;
+	boostSeconds: number; // a full tank lasts this long (3 .. 15)
+	cameraShake: boolean;
 }
 
 const DEFAULTS: Settings = {
@@ -24,6 +28,9 @@ const DEFAULTS: Settings = {
 	audio: true,
 	volume: 0.7,
 	timeOfDay: "cycle",
+	unlimitedBoost: false,
+	boostSeconds: 6,
+	cameraShake: true,
 };
 
 export const settings: Settings = {
@@ -31,8 +38,21 @@ export const settings: Settings = {
 	...storage.get<Partial<Settings>>("settings", {}),
 };
 
+const defaultShake = config.boostTrail.shake;
+
+/** Push the gameplay settings into config (boost tank, camera shake). */
+export function applySettings() {
+	config.flight.boostDrain = settings.unlimitedBoost
+		? 0
+		: 1 / settings.boostSeconds;
+	config.boostTrail.shake = settings.cameraShake ? defaultShake : 0;
+}
+
 export function saveSettings() {
 	storage.set("settings", settings);
+	applySettings();
 }
+
+applySettings();
 
 export const isTouchDevice = () => matchMedia("(pointer: coarse)").matches;
