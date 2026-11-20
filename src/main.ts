@@ -18,6 +18,7 @@ import { createPlaneModel } from "./plane/model";
 import { createAirColumns } from "./render/airColumns";
 import { createBirdMeshes } from "./render/birdMeshes";
 import { createBoostTrail } from "./render/boostTrail";
+import { createClouds } from "./render/clouds";
 import { createHoopMeshes } from "./render/hoopMeshes";
 import { createSky } from "./render/sky";
 import { createVineMeshes } from "./render/vines";
@@ -28,9 +29,11 @@ import { createHud } from "./ui/hud";
 import { createStats } from "./ui/stats";
 import { blend } from "./world/biomes";
 import { createBirdField } from "./world/birds";
+import { type Cloud, createCloudField } from "./world/clouds";
 import { createClimate, createHeight } from "./world/height";
 import { createFeatures, type Hoop, type Vine } from "./world/props";
 import { createAir } from "./world/thermals";
+import { createWind } from "./world/wind";
 
 const params = new URLSearchParams(location.search);
 const seed = params.get("seed") ?? config.world.seed;
@@ -103,9 +106,14 @@ const birdField = createBirdField(
 	air.columnsNear,
 	config.birds,
 );
+const wind = createWind(seed, config.wind, groundAt);
+/** Rising/sinking air: thermals plus ridge lift where the wind blows up a slope. */
+const airAt = (x: number, y: number, z: number) =>
+	air.airAt(x, y, z) + wind.ridge(time, x, y, z);
 const env: FlightEnv = {
 	groundAt,
-	airAt: air.airAt,
+	airAt,
+	windAt: (x, y, z) => wind.atPoint(time, x, y, z),
 	solidAt: (x, y, z) =>
 		features.solidAt(x, y, z) ||
 		birdField.hit(x, y, z, time, config.birds.hitRadius),
@@ -119,6 +127,9 @@ const vineMeshes = createVineMeshes(scene);
 const birdMeshes = createBirdMeshes(scene);
 const airColumns = createAirColumns(scene, air.columnsNear);
 const boostTrail = createBoostTrail(scene);
+const cloudField = createCloudField(seed, config.clouds);
+const clouds = createClouds(scene);
+let nearbyClouds: Cloud[] = [];
 
 // --- Plane ---
 const plane = createPlaneModel();
@@ -159,6 +170,7 @@ function gather(x: number, z: number) {
 	const n = features.near(x, z, config.props.featureRange);
 	nearbyHoops = n.hoops;
 	nearbyVines = n.vines;
+	nearbyClouds = cloudField.near(x, z, wind.driftTo(time));
 }
 
 function update(dt: number) {
@@ -185,7 +197,7 @@ function update(dt: number) {
 	telemetry.altitude = p.y - groundAt(p.x, p.z);
 	telemetry.sink = state.sink;
 	telemetry.climb = state.velocity.y;
-	airHere = air.airAt(p.x, p.y, p.z);
+	airHere = airAt(p.x, p.y, p.z);
 	telemetry.air = airHere;
 	telemetry.lift = liftFraction(state.airspeed, config.flight);
 	tracker.step(dt, state, telemetry.altitude, airHere);
@@ -289,6 +301,7 @@ function render(alpha: number, frameDt: number) {
 			climb: state.velocity.y,
 			air: airHere,
 			stalling: flying && telemetry.lift < 0.9,
+			wind: wind.at(time),
 		},
 		time,
 	);
@@ -300,6 +313,7 @@ function render(alpha: number, frameDt: number) {
 		time,
 	);
 	water.update(pos.x, pos.z, time);
+	clouds.update(nearbyClouds, wind.driftTo(time));
 	sky.update(camera);
 	renderer.render(scene, camera);
 }

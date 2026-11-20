@@ -55,18 +55,18 @@ Pulled forward because they were one-liners: sun shadow that follows the plane, 
 
 ## Phase 3: air and atmosphere
 
-- [ ] Wind: global vector, slow drift
+- [x] Wind: global vector, slow drift; calmer near the ground; the plane drifts with it; shown in the HUD (`src/world/wind.ts`)
 - [x] Thermals: 0–1 per 384m cell, seeded (`src/world/thermals.ts`)
 - [x] Sinking air columns (push you down, ease off near the ground)
 - [x] Thermals weighted by biome
 - [x] Thermal visual cues: tinted columns + rising warm / falling blue confetti (`src/render/airColumns.ts`)
 - [x] Felt cues: camera trails the air's push so the plane visibly lifts or drops, plus a light shake
 - [x] Paper birds: flocks on big circles, plus birds circling some thermals; solid, so dodge them (`src/world/birds.ts`)
-- [ ] Ridge lift
-- [ ] Paper clouds
+- [x] Ridge lift: wind · slope near the ground, added to rising air
+- [x] Paper clouds: three crossed cut-out layers, drift with the wind, fly-through (`src/render/clouds.ts`)
 - [x] Camera FOV with speed
 - [x] Camera terrain avoidance
-- [ ] **Done when:** you can stay up indefinitely on thermals and find them by sight
+- [x] **Done when:** you can stay up indefinitely on thermals and find them by sight (tested: circling a thermal climbed 64 → 162 m in 30 s)
 
 ## Phase 4: courses
 

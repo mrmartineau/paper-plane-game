@@ -37,6 +37,8 @@ export interface FlightEnv {
 	airAt: (x: number, y: number, z: number) => number;
 	/** True inside a tree, rock or arch. */
 	solidAt: (x: number, y: number, z: number) => boolean;
+	/** Horizontal wind (m/s). The plane drifts with the air it flies in. */
+	windAt: (x: number, y: number, z: number) => { x: number; z: number };
 }
 
 export type FlightConfig = Config["flight"];
@@ -150,11 +152,12 @@ export function stepFlight(
 
 	// 7. Rising or sinking air moves the plane up or down.
 	const air = env.airAt(s.position.x, s.position.y, s.position.z);
+	const wind = env.windAt(s.position.x, s.position.y, s.position.z);
 
 	const velocity = {
-		x: nf.x * airspeed,
+		x: nf.x * airspeed + wind.x,
 		y: nf.y * airspeed - sink + air,
-		z: nf.z * airspeed,
+		z: nf.z * airspeed + wind.z,
 	};
 	const position = {
 		x: s.position.x + velocity.x * dt,

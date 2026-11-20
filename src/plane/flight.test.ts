@@ -18,6 +18,7 @@ const stillAir: FlightEnv = {
 	groundAt: () => -Infinity,
 	airAt: () => 0,
 	solidAt: () => false,
+	windAt: () => ({ x: 0, z: 0 }),
 };
 const idle: InputState = { pitch: 0, roll: 0, boost: false };
 
@@ -108,6 +109,7 @@ describe("flight", () => {
 			groundAt: () => h,
 			airAt: () => 0,
 			solidAt: () => false,
+			windAt: () => ({ x: 0, z: 0 }),
 		});
 		expect(stepFlight(pitchedDown, idle, dt, c, ground(10)).crashed).toBe(true);
 		expect(stepFlight(s, idle, dt, c, ground(0)).crashed).toBe(false);

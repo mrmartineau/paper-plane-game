@@ -99,6 +99,30 @@ export const config = {
 		collisionFactor: 0.8, // colliders a bit smaller than the meshes, so near misses feel fair
 	},
 
+	// Global wind (drifts slowly) and ridge lift (wind blowing up a slope rises).
+	wind: {
+		min: 1.5, // m/s
+		max: 6,
+		drift: 0.004, // how fast direction and strength change (noise units per second)
+		fullHeight: 120, // metres above the ground for full strength
+		groundShare: 0.35, // share of the wind right at the ground
+		ridgeGain: 1.6, // vertical m/s per (m/s of wind × slope)
+		ridgeMax: 5, // m/s
+		ridgeHeight: 90, // metres above the ground where ridge lift fades out
+	},
+
+	// Paper clouds: layered cut-outs that drift with the wind. Not solid.
+	clouds: {
+		cell: 520, // metres
+		chance: 0.65,
+		maxPerCell: 3,
+		altitudeMin: 260, // metres above sea level
+		altitudeMax: 480,
+		sizeMin: 40, // metres wide
+		sizeMax: 110,
+		range: 1100,
+	},
+
 	// Paper birds: flocks on big circles, and a few circling in some thermals. Solid.
 	birds: {
 		flockCell: 640, // metres; at most one flock per cell

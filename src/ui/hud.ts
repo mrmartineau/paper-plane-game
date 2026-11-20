@@ -10,9 +10,11 @@ export interface HudInfo {
 	climb: number; // m/s
 	air: number; // m/s of rising (+) or sinking (-) air
 	stalling: boolean;
+	wind: { x: number; z: number }; // m/s, world space
 }
 
 const PX_PER_DEG = 2.4;
+const ARROWS = ["↑", "↗", "→", "↘", "↓", "↙", "←", "↖"];
 const NAMES: Record<number, string> = {
 	0: "N",
 	45: "NE",
@@ -57,6 +59,7 @@ export function createHud(stats: Stats) {
 		topSpeed: field("topSpeed"),
 		crashes: field("crashes"),
 		hoops: field("hoops"),
+		wind: field("wind"),
 	};
 
 	let lastText = -Infinity;
@@ -98,6 +101,15 @@ export function createHud(stats: Stats) {
 			set(out.topSpeed, `${Math.round(stats.topSpeed * 3.6)} km/h`);
 			set(out.crashes, `${stats.crashes}`);
 			set(out.hoops, `${stats.hoops}`);
+			// Arrow: where the wind blows, relative to where you're heading.
+			const windBearing =
+				(Math.atan2(info.wind.x, -info.wind.z) * 180) / Math.PI;
+			const rel = (((windBearing - info.bearing) % 360) + 360) % 360;
+			const arrow = ARROWS[Math.round(rel / 45) % 8];
+			set(
+				out.wind,
+				`${arrow} ${Math.hypot(info.wind.x, info.wind.z).toFixed(1)} m/s`,
+			);
 		},
 	};
 }

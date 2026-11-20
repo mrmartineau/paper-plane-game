@@ -7,6 +7,7 @@ const env: FlightEnv = {
 	groundAt: () => -Infinity,
 	airAt: () => 0,
 	solidAt: () => false,
+	windAt: () => ({ x: 0, z: 0 }),
 };
 const dt = 1 / 60;
 
