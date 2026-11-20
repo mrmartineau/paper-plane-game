@@ -1,13 +1,13 @@
 import * as THREE from "three";
+import { createBench } from "./bench";
 import { createChaseCam } from "./camera/chaseCam";
 import { config } from "./config";
 import { createInput } from "./core/input";
 import { startLoop } from "./core/loop";
 import { passedThrough } from "./courses/rings";
-import { createDevPanel, type Telemetry } from "./debug";
+import { createDevJumps, createDevPanel, type Telemetry } from "./debug";
 import { createCrash, respawnAt } from "./plane/crash";
 import {
-	createFlightState,
 	type FlightEnv,
 	type FlightState,
 	heading,
@@ -18,16 +18,18 @@ import { createPlaneModel } from "./plane/model";
 import { createAirColumns } from "./render/airColumns";
 import { createBirdMeshes } from "./render/birdMeshes";
 import { createBoostTrail } from "./render/boostTrail";
-import { createFloaterMeshes } from "./render/floaterMeshes";
 import { createHoopMeshes } from "./render/hoopMeshes";
-import { createPropMeshes } from "./render/propMeshes";
+import { createSky } from "./render/sky";
+import { createVineMeshes } from "./render/vines";
+import { createWater } from "./render/water";
+import { createWorldMeshes } from "./render/world";
 import { setupHelp } from "./ui/help";
 import { createHud } from "./ui/hud";
 import { createStats } from "./ui/stats";
-import { birdPose, createBirds, hitsBird } from "./world/birds";
-import { createHeight } from "./world/height";
-import { createProps, SHAPES } from "./world/props";
-import { createTerrain, createWater } from "./world/terrain";
+import { blend } from "./world/biomes";
+import { createBirdField } from "./world/birds";
+import { createClimate, createHeight } from "./world/height";
+import { createFeatures, type Hoop, type Vine } from "./world/props";
 import { createAir } from "./world/thermals";
 
 const params = new URLSearchParams(location.search);
@@ -75,31 +77,46 @@ addEventListener("resize", () => {
 	renderer.setSize(innerWidth, innerHeight);
 });
 
-// --- World ---
+// --- World: pure generators, streamed meshes ---
+let time = 0; // seconds since start; birds move with it
+let airHere = 0; // vertical air speed at the plane
 const height = createHeight(seed, config.world);
+const climate = createClimate(seed, config.world);
 const groundAt = (x: number, z: number) =>
 	Math.max(height(x, z), config.world.seaLevel);
-const air = createAir(seed, groundAt, config.air);
-const props = createProps(seed, height, config.props, config.world.seaLevel);
-const birds = createBirds(
+const features = createFeatures(
+	seed,
+	height,
+	climate,
+	config.props,
+	config.world,
+);
+const air = createAir(seed, groundAt, config.air, (x, z) =>
+	Math.min(
+		1,
+		blend(features.biomeAt(x, z), (b) => b.thermals),
+	),
+);
+const birdField = createBirdField(
 	seed,
 	groundAt,
-	air.columnsNear(0, 0, config.props.extent * 0.71),
+	air.columnsNear,
 	config.birds,
-	config.props.extent,
 );
 const env: FlightEnv = {
 	groundAt,
 	airAt: air.airAt,
 	solidAt: (x, y, z) =>
-		props.solidAt(x, y, z) ||
-		hitsBird(birds, x, y, z, time, config.birds.hitRadius),
+		features.solidAt(x, y, z) ||
+		birdField.hit(x, y, z, time, config.birds.hitRadius),
 };
-scene.add(createTerrain(height), createWater());
-createPropMeshes(scene, props);
-const hoopMeshes = createHoopMeshes(scene, props.hoops);
-const birdMeshes = createBirdMeshes(scene, birds);
-const floaterMeshes = createFloaterMeshes(scene, props);
+
+const world = createWorldMeshes(scene, seed, features, height, climate);
+const sky = createSky(scene);
+const water = createWater(scene);
+const hoopMeshes = createHoopMeshes(scene);
+const vineMeshes = createVineMeshes(scene);
+const birdMeshes = createBirdMeshes(scene);
 const airColumns = createAirColumns(scene, air.columnsNear);
 const boostTrail = createBoostTrail(scene);
 
@@ -107,14 +124,15 @@ const boostTrail = createBoostTrail(scene);
 const plane = createPlaneModel();
 scene.add(plane.mesh);
 const input = createInput(renderer.domElement);
-const crash = createCrash(scene, groundAt);
+const crash = createCrash(scene, groundAt, env.solidAt);
 const chase = createChaseCam(camera, groundAt);
 const tracker = createStats();
 const hud = createHud(tracker.stats);
+const bench = params.has("bench") ? createBench() : null;
 
-let state: FlightState = respawnAt(0, 0, 0, groundAt);
+let state: FlightState = respawnAt(0, 0, 0, groundAt, env.solidAt);
 let prev: FlightState = state;
-let snapped = false; // camera jumps to the plane on spawn
+let snapped = false; // camera (and the world around it) jump to the plane on spawn
 const telemetry: Telemetry = {
 	airspeed: 0,
 	altitude: 0,
@@ -124,131 +142,31 @@ const telemetry: Telemetry = {
 	lift: 1,
 };
 
-function respawn() {
-	state = respawnAt(
-		state.position.x,
-		state.position.z,
-		heading(state.orientation),
-		groundAt,
-	);
-	prev = state;
+/** Put the plane somewhere new (respawn or a dev jump). */
+function place(s: FlightState) {
+	state = s;
+	prev = s;
 	snapped = false;
 }
 
-/** Dev: put the plane 50m south of the nearest updraft's edge, facing it. */
-function goToUpdraft() {
-	const { x, z } = state.position;
-	const col = air
-		.columnsNear(x, z, 3000)
-		.filter((c) => c.strength > 0)
-		.sort(
-			(a, b) =>
-				(a.x - x) ** 2 + (a.z - z) ** 2 - ((b.x - x) ** 2 + (b.z - z) ** 2),
-		)[0];
-	if (!col) return;
-	const sz = col.z + col.radius + 50;
-	const y = Math.max(col.base + 60, groundAt(col.x, sz) + 30);
-	state = createFlightState({ x: col.x, y, z: sz }, 0, config.spawn.speed);
-	prev = state;
-	snapped = false;
-}
+// Animated things near the player, refreshed twice a second.
+let nearbyHoops: Hoop[] = [];
+let nearbyVines: Vine[] = [];
+let lastGather = -Infinity;
+const hoopPasses = new Map<string, number>(); // hoop id → time you last flew through
 
-function nearest<T extends { x: number; z: number }>(
-	items: T[],
-): T | undefined {
-	const { x, z } = state.position;
-	const d = (t: T) => (t.x - x) ** 2 + (t.z - z) ** 2;
-	return [...items].sort((u, v) => d(u) - d(v))[0];
-}
-
-/** Dev: line the plane up `back` metres in front of a hole, a little high (it glides down on the way). */
-function lineUp(
-	x: number,
-	holeY: number,
-	z: number,
-	yaw: number,
-	back: number,
-) {
-	const glideDrop = back * -Math.tan(config.flight.glidePitch);
-	state = createFlightState(
-		{
-			x: x + Math.sin(yaw) * back,
-			y: holeY + glideDrop,
-			z: z + Math.cos(yaw) * back,
-		},
-		yaw,
-		config.spawn.speed,
-	);
-	prev = state;
-	snapped = false;
-}
-
-function goToArch() {
-	const a = nearest(props.arches);
-	if (!a) return;
-	const { R, r } = SHAPES.arch;
-	lineUp(
-		a.x,
-		a.kind === "ring" ? a.y : a.y + ((R - r) / 2) * a.s,
-		a.z,
-		a.yaw,
-		120,
-	);
-}
-
-/** Dev: park the plane 60m outside the nearest bird's circle, level with it, facing in. */
-function goToBirds() {
-	const b = nearest(birds.map((bird) => ({ ...bird, x: bird.cx, z: bird.cz })));
-	if (!b) return;
-	const pose = birdPose(b, time, { x: 0, y: 0, z: 0, yaw: 0, bank: 0 });
-	const ox = pose.x - b.cx;
-	const oz = pose.z - b.cz;
-	const k = (b.radius + 60) / Math.hypot(ox, oz);
-	const x = b.cx + ox * k;
-	const z = b.cz + oz * k;
-	state = createFlightState(
-		{ x, y: pose.y + 3, z },
-		Math.atan2(ox, oz),
-		config.spawn.speed,
-	);
-	prev = state;
-	snapped = false;
-}
-
-/** Dev: fly past the nearest floating mountain, alongside its vines. */
-function goToFloater() {
-	const f = nearest(props.floaters);
-	if (!f) return;
-	const side = f.R + 30; // aim beside it, not into it
-	lineUp(
-		f.x + Math.cos(f.yaw) * side,
-		f.y - f.H * 0.3,
-		f.z - Math.sin(f.yaw) * side,
-		f.yaw,
-		200,
-	);
-}
-
-/** Dev: face the nearest waterfall from 120m out, level with its middle. */
-function goToWaterfall() {
-	const w = nearest(props.waterfalls);
-	if (w) lineUp(w.x, w.y - w.length * 0.4, w.z, w.yaw, 120);
-}
-
-function goToHoop() {
-	const h = nearest(props.hoops);
-	if (h) lineUp(h.x, h.y, h.z, h.yaw, config.props.hoopLane - 10);
+function gather(x: number, z: number) {
+	const n = features.near(x, z, config.props.featureRange);
+	nearbyHoops = n.hoops;
+	nearbyVines = n.vines;
 }
 
 function update(dt: number) {
 	const i = input.update(dt);
+	bench?.steer(i, telemetry.altitude, telemetry.climb);
 	prev = state;
 	const fresh = crash.update(dt);
-	if (fresh) {
-		state = fresh;
-		prev = fresh;
-		snapped = false;
-	}
+	if (fresh) place(fresh);
 	if (crash.phase === "rolling") {
 		airHere = 0;
 		return;
@@ -272,13 +190,12 @@ function update(dt: number) {
 	telemetry.lift = liftFraction(state.airspeed, config.flight);
 	tracker.step(dt, state, telemetry.altitude, airHere);
 
-	// ponytail: checks every hoop each step (~130); use the props grid if hoop counts grow.
-	props.hoops.forEach((h, i) => {
+	for (const h of nearbyHoops) {
 		if (passedThrough(h, prev.position, state.position)) {
 			tracker.stats.hoops++;
-			hoopMeshes.pass(i, time);
+			hoopPasses.set(h.id, time);
 		}
-	});
+	}
 }
 
 // --- Render ---
@@ -289,11 +206,10 @@ const fwd = new THREE.Vector3();
 const vel = new THREE.Vector3();
 const shake = new THREE.Quaternion();
 const shakeEuler = new THREE.Euler();
-let time = 0;
-let airHere = 0;
 
 function render(alpha: number, frameDt: number) {
 	time += frameDt;
+	bench?.frame(frameDt * 1000);
 	const lerp = (a: number, b: number) => a + (b - a) * alpha;
 	pos.set(
 		lerp(prev.position.x, state.position.x),
@@ -336,6 +252,17 @@ function render(alpha: number, frameDt: number) {
 	);
 	airColumns.update(pos, time);
 
+	// After a spawn or jump, load the new area in one go before showing it.
+	world.update(
+		pos.x,
+		pos.z,
+		time,
+		snapped ? config.world.buildBudgetMs : Infinity,
+	);
+	if (!snapped || time - lastGather > 0.5) {
+		gather(pos.x, pos.z);
+		lastGather = time;
+	}
 	if (!snapped) {
 		chase.snap(pos, plane.mesh.quaternion);
 		snapped = true;
@@ -366,22 +293,40 @@ function render(alpha: number, frameDt: number) {
 		time,
 	);
 
-	hoopMeshes.update(time);
-	birdMeshes.update(time);
-	floaterMeshes.update(time);
+	hoopMeshes.update(nearbyHoops, time, hoopPasses);
+	vineMeshes.update(nearbyVines, time);
+	birdMeshes.update(
+		birdField.near(pos.x, pos.z, config.props.featureRange),
+		time,
+	);
+	water.update(pos.x, pos.z, time);
+	sky.update(camera);
 	renderer.render(scene, camera);
 }
 
 startLoop(update, render);
 setupHelp();
 
-if (params.has("debug"))
+if (params.has("debug")) {
 	createDevPanel(telemetry, {
-		respawn,
-		"go to updraft": goToUpdraft,
-		"go to arch": goToArch,
-		"go to hoop": goToHoop,
-		"go to birds": goToBirds,
-		"go to floating mountain": goToFloater,
-		"go to waterfall": goToWaterfall,
+		respawn: () =>
+			place(
+				respawnAt(
+					state.position.x,
+					state.position.z,
+					heading(state.orientation),
+					groundAt,
+					env.solidAt,
+				),
+			),
+		...createDevJumps({
+			position: () => state.position,
+			time: () => time,
+			place,
+			features,
+			birdsNear: birdField.near,
+			columnsNear: air.columnsNear,
+			groundAt,
+		}),
 	});
+}

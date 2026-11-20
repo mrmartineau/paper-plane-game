@@ -50,18 +50,15 @@ export const config = {
 		spin: 0.25, // rad/s confetti swirl
 	},
 
-	// Trees, rocks and rock arches. Phase 1: placed once over the whole static terrain.
+	// Trees, rocks, houses, arches, hoops, floating islands and mountains. Generated per cell as you fly.
 	props: {
-		extent: 4096, // metres square, matches world.terrainSize
-		cell: 32, // metres; tree/rock placement and collision grid
-		treeTries: 3, // candidate trees per cell
-		forestScale: 1 / 600, // forest patch noise
-		meadowDensity: 0.06, // tree chance outside forests
-		tallShare: 0.35, // share of forest trees that are tall pines
+		propRange: 700, // metres; trees, rocks and houses load within this
+		featureRange: 1100, // metres; arches, hoops, islands and floating mountains load within this
+		cell: 32, // metres; tree/rock sub-cells inside each terrain chunk (densities are per biome, see biomes.ts)
+		treeTries: 3, // candidate trees per sub-cell
 		beach: 4, // no trees this close above sea level
-		treeLine: 150, // no trees above this height
+		treeLine: 280, // no trees above this height (snow pines go higher than the old 150)
 		maxSlope: 0.75,
-		rockChance: 0.08,
 		rockMin: 1.2,
 		rockMax: 7,
 		archCell: 384, // metres; at most one arch or ring per cell
@@ -149,13 +146,26 @@ export const config = {
 		friction: 0.9, // 1/s
 		slopeAccel: 9, // m/s² per unit slope, so it rolls downhill
 		respawnBack: 40, // metres back along the heading
+		respawnStep: 120, // metres further out for each ring of retries
+		respawnTries: 32,
+		respawnClear: 250, // metres of glide ahead that must be clear
 	},
 
 	world: {
 		seed: "paper",
 		seaLevel: 0,
-		terrainSize: 4096, // metres, phase 1 single static mesh
-		terrainQuads: 320,
+		chunkSize: 128, // metres
+		chunkQuads: 64, // quads per side at LOD0; LOD1 = 32, LOD2 = 16
+		chunkRadius: 8, // chunks loaded around the player (quality tiers will set this)
+		lod1Distance: 200, // metres from the player to the chunk's nearest point
+		lod2Distance: 520,
+		skirt: 12, // metres the chunk edges drop, hiding cracks between LODs
+		buildBudgetMs: 6, // main-thread prop building allowed per frame
+		workers: 2, // terrain-building Web Workers
+		syncRange: 260, // after a jump, terrain nearer than this is built at once
+		climateScale: 1 / 2600, // temperature and moisture noise
+		lapseRate: 1 / 380, // temperature drop per metre of height (snow on peaks)
+		cliffSlope: 0.72, // faces with normal.y below this show bare rock
 		// height(): FBM + domain warp + ridged mountains
 		baseScale: 1 / 900,
 		baseAmplitude: 90,
@@ -168,6 +178,13 @@ export const config = {
 		ridgeScale: 1 / 700,
 		ridgeAmplitude: 260,
 		baseOffset: 18,
+	},
+
+	// ?bench autopilot (Phase 2 check: long straight flight, no hitches, flat memory)
+	bench: {
+		minutes: 10,
+		warmup: 5, // seconds ignored at the start while the world loads
+		altitude: 150, // metres above the ground the autopilot holds
 	},
 
 	camera: {
@@ -203,9 +220,10 @@ export const config = {
 
 	render: {
 		maxPixelRatio: 2,
-		fogNear: 400,
-		fogFar: 1800,
-		skyColor: 0xcfe3ea,
+		fogNear: 420,
+		fogFar: 1000, // just inside the terrain range (chunkRadius × chunkSize), so the edge is hidden
+		skyColor: 0xcfe3ea, // horizon and fog
+		zenithColor: 0x8db7d6,
 		sunColor: 0xfff4e0,
 		sunIntensity: 2.2,
 		ambientIntensity: 1.1,

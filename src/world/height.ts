@@ -41,6 +41,23 @@ export function createHeight(seed: string, w: Config["world"]): HeightFn {
 	};
 }
 
+/**
+ * Climate at a point: temperature and moisture in ~[-1, 1].
+ * Temperature drops with height so high peaks turn snowy.
+ */
+export function createClimate(seed: string, w: Config["world"]) {
+	const temp = makeNoise(seed, "temperature");
+	const moist = makeNoise(seed, "moisture");
+	return (x: number, z: number, h: number) => ({
+		temperature:
+			temp(x * w.climateScale, z * w.climateScale) -
+			Math.max(0, h) * w.lapseRate,
+		moisture: moist(x * w.climateScale, z * w.climateScale),
+	});
+}
+
+export type ClimateFn = ReturnType<typeof createClimate>;
+
 function smoothstep(a: number, b: number, t: number): number {
 	const x = Math.min(1, Math.max(0, (t - a) / (b - a)));
 	return x * x * (3 - 2 * x);

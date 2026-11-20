@@ -1,5 +1,6 @@
 // Seeded columns of rising (thermal) and sinking air. Pure maths, no Three.js.
 import type { Config } from "../config";
+import { memoCells } from "../core/memo";
 import { rngFor } from "../core/rng";
 
 export interface AirColumn {
@@ -18,17 +19,13 @@ export function createAir(
 	seed: string,
 	groundAt: (x: number, z: number) => number,
 	a: AirConfig,
+	/** 0..1: how likely a thermal is here (biomes: more over desert, fewer over snow). */
+	thermalOdds: (x: number, z: number) => number = () => 1,
 ) {
-	// ponytail: cache never evicts; fine at phase 1 scale, evict with chunk unload in phase 2.
-	const cache = new Map<string, AirColumn[]>();
-
-	function cell(cx: number, cz: number): AirColumn[] {
-		const key = `${cx},${cz}`;
-		let cols = cache.get(key);
-		if (cols) return cols;
+	const cell = memoCells((cx: number, cz: number): AirColumn[] => {
 		const rand = rngFor(seed, "air", cx, cz);
 		const n = Math.floor(rand() * (a.maxPerCell + 1));
-		cols = [];
+		const cols: AirColumn[] = [];
 		for (let i = 0; i < n; i++) {
 			const x = (cx + rand()) * a.cellSize;
 			const z = (cz + rand()) * a.cellSize;
@@ -36,6 +33,8 @@ export function createAir(
 			const strength = down
 				? -lerp(a.downMin, a.downMax, rand())
 				: lerp(a.upMin, a.upMax, rand());
+			const keep = rand();
+			if (!down && keep > thermalOdds(x, z)) continue;
 			cols.push({
 				id: (cx * 73856093) ^ (cz * 19349663) ^ i,
 				x,
@@ -46,9 +45,8 @@ export function createAir(
 				strength,
 			});
 		}
-		cache.set(key, cols);
 		return cols;
-	}
+	});
 
 	function columnsNear(x: number, z: number, range: number): AirColumn[] {
 		const out: AirColumn[] = [];

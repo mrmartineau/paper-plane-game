@@ -2,6 +2,7 @@
 // of some thermals (so birds also show you where the lift is). They are solid.
 // Pure: every bird's position is a function of time, so no per-bird state.
 import type { Config } from "../config";
+import { forCells, memoCells } from "../core/memo";
 import { rngFor } from "../core/rng";
 import type { AirColumn } from "./thermals";
 
@@ -26,24 +27,26 @@ export interface BirdPose {
 
 export type BirdsConfig = Config["birds"];
 
-export function createBirds(
+/**
+ * Birds per cell (cell size = flockCell): maybe one flock on a big circle, plus a few
+ * birds circling each thermal whose centre is in the cell. Cached, so it streams.
+ */
+export function createBirdField(
 	seed: string,
 	height: (x: number, z: number) => number,
-	thermals: AirColumn[],
+	columnsNear: (x: number, z: number, range: number) => AirColumn[],
 	b: BirdsConfig,
-	extent: number,
-): Bird[] {
-	const birds: Bird[] = [];
+) {
 	const lerp = (a: number, c: number, t: number) => a + (c - a) * t;
+	const size = b.flockCell;
 
-	// Flocks on big circles. Altitude clears the highest ground under the circle.
-	const half = extent / 2;
-	for (let cx = -half; cx < half; cx += b.flockCell) {
-		for (let cz = -half; cz < half; cz += b.flockCell) {
-			const rand = rngFor(seed, "flock", cx, cz);
-			if (rand() > b.flockChance) continue;
-			const x = cx + rand() * b.flockCell;
-			const z = cz + rand() * b.flockCell;
+	const cell = memoCells((cx: number, cz: number): Bird[] => {
+		const birds: Bird[] = [];
+		const rand = rngFor(seed, "flock", cx, cz);
+		if (rand() <= b.flockChance) {
+			// A flock on a big circle. Altitude clears the highest ground under the circle.
+			const x = (cx + rand()) * size;
+			const z = (cz + rand()) * size;
 			const radius = lerp(b.flockRadiusMin, b.flockRadiusMax, rand());
 			let ground = 0;
 			for (let a = 0; a < Math.PI * 2; a += Math.PI / 8) {
@@ -69,29 +72,60 @@ export function createBirds(
 				});
 			}
 		}
+
+		// A few birds circling inside some of this cell's thermals.
+		const x0 = cx * size;
+		const z0 = cz * size;
+		for (const col of columnsNear(x0 + size / 2, z0 + size / 2, size)) {
+			if (
+				col.strength <= 0 ||
+				col.x < x0 ||
+				col.x >= x0 + size ||
+				col.z < z0 ||
+				col.z >= z0 + size
+			)
+				continue;
+			const r2 = rngFor(seed, "thermalBirds", col.id);
+			if (r2() > b.thermalChance) continue;
+			const n = 2 + Math.floor(r2() * 2);
+			for (let i = 0; i < n; i++) {
+				const radius = col.radius * lerp(0.35, 0.7, r2());
+				birds.push({
+					cx: col.x,
+					cy: col.base + col.top * lerp(0.3, 0.8, r2()),
+					cz: col.z,
+					radius,
+					speed: b.thermalSpeed / radius,
+					phase: r2() * Math.PI * 2,
+					flap: 0.25,
+					tint: Math.floor(r2() * 100),
+				});
+			}
+		}
+		return birds;
+	});
+
+	/** Every bird whose circle centre is in a cell within `range`. */
+	function near(x: number, z: number, range: number): Bird[] {
+		const out: Bird[] = [];
+		forCells(x, z, range, size, (cx, cz) => {
+			out.push(...cell(cx, cz));
+		});
+		return out;
 	}
 
-	// A few birds circling inside some thermals.
-	for (const col of thermals) {
-		if (col.strength <= 0) continue;
-		const rand = rngFor(seed, "thermalBirds", col.id);
-		if (rand() > b.thermalChance) continue;
-		const n = 2 + Math.floor(rand() * 2);
-		for (let i = 0; i < n; i++) {
-			const radius = col.radius * lerp(0.35, 0.7, rand());
-			birds.push({
-				cx: col.x,
-				cy: col.base + col.top * lerp(0.3, 0.8, rand()),
-				cz: col.z,
-				radius,
-				speed: b.thermalSpeed / radius,
-				phase: rand() * Math.PI * 2,
-				flap: 0.25,
-				tint: Math.floor(rand() * 100),
-			});
-		}
+	/** True if a point is within `radius` of a bird at time t. */
+	function hit(
+		x: number,
+		y: number,
+		z: number,
+		t: number,
+		radius: number,
+	): boolean {
+		return hitsBird(near(x, z, b.flockRadiusMax + 10), x, y, z, t, radius);
 	}
-	return birds;
+
+	return { near, hit };
 }
 
 export function birdPose(bird: Bird, t: number, out: BirdPose): BirdPose {

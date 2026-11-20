@@ -24,31 +24,33 @@ Tracks [paper-plane-game-plan.md](./paper-plane-game-plan.md). Tick items as the
 - [x] lil-gui dev panel behind `?debug`, with live telemetry, "go to updraft" and "go to arch" (`src/debug.ts`)
 - [x] HUD, `U` toggles: compass, height, speed, climb rate, stall flag, flight time, distance, time in lift, loops, best height, top speed, crashes (`src/ui/hud.ts`, `src/ui/stats.ts`)
 - [x] Unit tests: steady glide, stall recovery, dive/climb, bank + auto-level, full loop, rising/sinking air, crash; height, air and prop determinism; prop collision and arch lanes; loop counter
-- [ ] **Feel review (you):** gliding, turning, diving and climbing feel good for 5 minutes
+- [x] **Feel review (you):** approved ("it looks good, continue with the plan")
 
 Pulled forward because they were one-liners: sun shadow that follows the plane, fog, flat water at sea level, FOV widens with speed, camera stays above terrain.
 
 ## Phase 2: endless papercraft world
 
 - [x] `rng.ts`: `rngFor(seed, ...parts)`
-- [ ] Chunk geometry (128m, 64×64 quads) + skirts
-- [ ] Chunk streaming around the player, N builds per frame
-- [ ] LOD: 64 / 32 / 16 quads by distance
-- [ ] Disposal on unload, check `renderer.info`
-- [ ] `biome(x, z)`: temperature + moisture + height → meadow, forest, desert, snow, water
-- [ ] Biome vertex colour blending
+- [x] Chunk geometry (128m, 64×64 quads) + skirts (`src/world/chunk.ts`, pure)
+- [x] Streaming around the player, nearest first: terrain built in 2 Web Workers, props on the main thread within a per-frame budget (`src/render/streamer.ts`, `src/world/chunkWorker.ts`)
+- [x] LOD: 64 / 32 / 16 quads by distance, swapped without gaps
+- [x] Disposal on unload (geometries; materials are shared). Generators cached with an LRU, so memory stays flat
+- [x] Climate (`createClimate` in `height.ts`) → soft biome weights: meadow, forest, desert, snow; colder with height so peaks are snowy; sand and seabed by the water (`src/world/biomes.ts`)
+- [x] Biome colour blending per face, bare rock on cliffs
 - [x] Paper material: grain, mottling, crease darkening, per-face jitter (`src/render/paperMaterial.ts`), on land, water, plane and ball
-- [ ] Sky
+- [x] Sky: gradient dome, horizon = fog colour (`src/render/sky.ts`)
 - [x] Instanced props: pines, tall pines (to ~35m), round trees in forest patches; rocks on slopes (`src/world/props.ts`, `src/render/propMeshes.ts`)
 - [x] Sandstone arches and standing rings you can fly through, with a clear lane in front and behind
 - [x] Floating rock islands (grass cap, hanging spike), solid
 - [x] Floating mountains (Avatar-style pillars) in groups, with trees on top, paper waterfalls that fade in mid-air, and thick swaying vines (solid) (`src/render/floaterMeshes.ts`)
 - [x] Paper hoops: floating or on poles, clear approach lanes, turn gold when flown through, counted in the HUD
 - [x] Collision with trees, rocks, arches, islands, hoop rims, poles and birds (forgiving: colliders 80% of mesh size)
-- [ ] Houses
-- [ ] Move props to per-chunk instancing (now: one batch per kind for the whole map)
-- [ ] Water sheets that bob
-- [ ] Determinism test for chunk heights and props
+- [x] Houses: little villages of folded boxes with prism roofs, in meadows
+- [x] Cacti in deserts, snowy pines in snow, tree mix per biome
+- [x] Props streamed per cell and baked into one mesh per cell (one draw call); hoops, vines and birds are pooled
+- [x] Spawns search for a clear glide path (no spawning into a floating mountain)
+- [x] Water: three stacked translucent paper sheets that bob, following the player (`src/render/water.ts`)
+- [x] Determinism tests for chunks and per-cell features
 - [ ] **Done when:** 10 min straight flight, no hitch > 50ms, flat memory
 
 ## Phase 3: air and atmosphere
@@ -56,7 +58,7 @@ Pulled forward because they were one-liners: sun shadow that follows the plane, 
 - [ ] Wind: global vector, slow drift
 - [x] Thermals: 0–1 per 384m cell, seeded (`src/world/thermals.ts`)
 - [x] Sinking air columns (push you down, ease off near the ground)
-- [ ] Thermals weighted by biome (needs Phase 2 biomes)
+- [x] Thermals weighted by biome
 - [x] Thermal visual cues: tinted columns + rising warm / falling blue confetti (`src/render/airColumns.ts`)
 - [x] Felt cues: camera trails the air's push so the plane visibly lifts or drops, plus a light shake
 - [x] Paper birds: flocks on big circles, plus birds circling some thermals; solid, so dodge them (`src/world/birds.ts`)
@@ -84,7 +86,7 @@ Pulled forward because they were one-liners: sun shadow that follows the plane, 
 - [ ] Gamepad left stick
 - [ ] Quality tiers (low / medium / high) + startup benchmark
 - [ ] Adaptive resolution (p90 > 20ms for 3s)
-- [ ] Chunk generation in a Web Worker
+- [x] Chunk generation in a Web Worker (done early, in Phase 2: it was needed)
 - [ ] Pause menu + settings (quality, controls, invert, sensitivity, audio)
 - [ ] **Done when:** 60fps recent iPhone (medium), 30fps+ mid Android (low), both control schemes feel good
 

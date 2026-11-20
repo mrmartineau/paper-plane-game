@@ -1,4 +1,8 @@
 import { config } from "./config";
+import { createFlightState, type FlightState, type Vec3 } from "./plane/flight";
+import { type Bird, birdPose } from "./world/birds";
+import { type Features, SHAPES } from "./world/props";
+import type { AirColumn } from "./world/thermals";
 
 export interface Telemetry {
 	airspeed: number;
@@ -65,4 +69,124 @@ export async function createDevPanel(
 	const s = gui.addFolder("Spawn").close();
 	s.add(config.spawn, "altitude", 10, 400);
 	s.add(config.spawn, "speed", 5, 50);
+}
+
+/**
+ * Dev "go to" jumps: put the plane in front of the nearest thing of a kind, lined up with it.
+ * `place` receives the new flight state.
+ */
+export function createDevJumps(ctx: {
+	position: () => Vec3;
+	time: () => number;
+	place: (s: FlightState) => void;
+	features: Features;
+	birdsNear: (x: number, z: number, range: number) => Bird[];
+	columnsNear: (x: number, z: number, range: number) => AirColumn[];
+	groundAt: (x: number, z: number) => number;
+}) {
+	const range = 3000;
+	const nearest = <T extends { x: number; z: number }>(
+		items: T[],
+	): T | undefined => {
+		const { x, z } = ctx.position();
+		const d = (t: T) => (t.x - x) ** 2 + (t.z - z) ** 2;
+		return [...items].sort((u, v) => d(u) - d(v))[0];
+	};
+	const around = () =>
+		ctx.features.near(ctx.position().x, ctx.position().z, range);
+	/** Line up `back` metres in front of a hole, a little high (the plane glides down on the way). */
+	const lineUp = (
+		x: number,
+		holeY: number,
+		z: number,
+		yaw: number,
+		back: number,
+	) => {
+		const glideDrop = back * -Math.tan(config.flight.glidePitch);
+		ctx.place(
+			createFlightState(
+				{
+					x: x + Math.sin(yaw) * back,
+					y: holeY + glideDrop,
+					z: z + Math.cos(yaw) * back,
+				},
+				yaw,
+				config.spawn.speed,
+			),
+		);
+	};
+
+	return {
+		"go to updraft"() {
+			const { x, z } = ctx.position();
+			const col = nearest(
+				ctx.columnsNear(x, z, range).filter((c) => c.strength > 0),
+			);
+			if (!col) return;
+			const sz = col.z + col.radius + 50;
+			const y = Math.max(col.base + 60, ctx.groundAt(col.x, sz) + 30);
+			ctx.place(
+				createFlightState({ x: col.x, y, z: sz }, 0, config.spawn.speed),
+			);
+		},
+		"go to arch"() {
+			const a = nearest(around().arches);
+			if (!a) return;
+			const { R, r } = SHAPES.arch;
+			lineUp(
+				a.x,
+				a.kind === "ring" ? a.y : a.y + ((R - r) / 2) * a.s,
+				a.z,
+				a.yaw,
+				120,
+			);
+		},
+		"go to hoop"() {
+			const h = nearest(around().hoops);
+			if (h) lineUp(h.x, h.y, h.z, h.yaw, config.props.hoopLane - 10);
+		},
+		"go to birds"() {
+			const { x, z } = ctx.position();
+			const b = nearest(
+				ctx
+					.birdsNear(x, z, range)
+					.map((bird) => ({ ...bird, x: bird.cx, z: bird.cz })),
+			);
+			if (!b) return;
+			const pose = birdPose(b, ctx.time(), {
+				x: 0,
+				y: 0,
+				z: 0,
+				yaw: 0,
+				bank: 0,
+			});
+			const ox = pose.x - b.cx;
+			const oz = pose.z - b.cz;
+			const k = (b.radius + 60) / Math.hypot(ox, oz);
+			// Park 60m outside the circle, level with the bird, facing in.
+			ctx.place(
+				createFlightState(
+					{ x: b.cx + ox * k, y: pose.y + 3, z: b.cz + oz * k },
+					Math.atan2(ox, oz),
+					config.spawn.speed,
+				),
+			);
+		},
+		"go to floating mountain"() {
+			const f = nearest(around().floaters);
+			if (!f) return;
+			const side = f.R + 30; // aim beside it, not into it
+			lineUp(
+				f.x + Math.cos(f.yaw) * side,
+				f.y - f.H * 0.3,
+				f.z - Math.sin(f.yaw) * side,
+				f.yaw,
+				200,
+			);
+		},
+		"go to waterfall"() {
+			const w = nearest(around().waterfalls);
+			if (w) lineUp(w.x, w.y - w.length * 0.4, w.z, w.yaw, 120);
+		},
+	};
 }

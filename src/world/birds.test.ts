@@ -1,14 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { config } from "../config";
-import { type Bird, birdPose, createBirds, hitsBird } from "./birds";
+import { type Bird, birdPose, createBirdField, hitsBird } from "./birds";
 
 const flat = () => 0;
 const pose = () => ({ x: 0, y: 0, z: 0, yaw: 0, bank: 0 });
 
 describe("birds", () => {
 	it("are deterministic and include flocks", () => {
-		const a = createBirds("s", flat, [], config.birds, 3000);
-		expect(a).toEqual(createBirds("s", flat, [], config.birds, 3000));
+		const a = createBirdField("s", flat, () => [], config.birds).near(
+			0,
+			0,
+			1500,
+		);
+		expect(a).toEqual(
+			createBirdField("s", flat, () => [], config.birds).near(0, 0, 1500),
+		);
 		expect(a.length).toBeGreaterThan(10);
 	});
 
@@ -23,7 +29,7 @@ describe("birds", () => {
 			strength: 8,
 		};
 		const b = { ...config.birds, flockChance: 0, thermalChance: 1 };
-		const birds = createBirds("s", flat, [col], b, 1000);
+		const birds = createBirdField("s", flat, () => [col], b).near(100, 200, 10);
 		expect(birds.length).toBeGreaterThan(1);
 		for (const bird of birds) {
 			const p = birdPose(bird, 12.3, pose());

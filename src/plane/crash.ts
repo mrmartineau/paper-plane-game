@@ -8,8 +8,13 @@ import { createPaperBall } from "./model";
 export type CrashPhase = "flying" | "rolling" | "fold";
 
 type Ground = (x: number, z: number) => number;
+type Solid = (x: number, y: number, z: number) => boolean;
 
-export function createCrash(scene: THREE.Scene, groundAt: Ground) {
+export function createCrash(
+	scene: THREE.Scene,
+	groundAt: Ground,
+	solidAt: Solid,
+) {
 	const ball = createPaperBall();
 	ball.visible = false;
 	scene.add(ball);
@@ -78,7 +83,7 @@ export function createCrash(scene: THREE.Scene, groundAt: Ground) {
 					phase = "fold";
 					t = 0;
 					ball.visible = false;
-					return respawnAt(pos.x, pos.z, yaw, groundAt);
+					return respawnAt(pos.x, pos.z, yaw, groundAt, solidAt);
 				}
 			} else if (t >= c.foldTime) {
 				phase = "flying";
@@ -111,21 +116,61 @@ export function createCrash(scene: THREE.Scene, groundAt: Ground) {
 	};
 }
 
-/** Respawn high above a point, backed up along the heading, at glide speed. */
+/**
+ * Respawn high above a point, backed up along the heading, at glide speed.
+ * If anything (an island, a tree on a hill) is in the way of the first few seconds
+ * of glide, try spots further out and other headings until the way is clear.
+ */
 export function respawnAt(
 	x: number,
 	z: number,
 	yaw: number,
 	groundAt: Ground,
+	solidAt: Solid,
 ): FlightState {
-	const back = config.crash.respawnBack;
-	const rx = x + Math.sin(yaw) * back;
-	const rz = z + Math.cos(yaw) * back;
-	return createFlightState(
-		{ x: rx, y: groundAt(rx, rz) + config.spawn.altitude, z: rz },
-		yaw,
-		config.spawn.speed,
-	);
+	const c = config.crash;
+	let fallback: FlightState | null = null;
+	for (let k = 0; k < c.respawnTries; k++) {
+		// First ring: the usual spot behind the crash, trying 8 headings.
+		// Later rings: spots on wider circles around the crash.
+		const ring = Math.floor(k / 8);
+		const turn = (k % 8) * (Math.PI / 4);
+		const out = c.respawnBack + ring * c.respawnStep;
+		const dir = yaw + (ring === 0 ? 0 : turn);
+		const rx = x + Math.sin(dir) * out;
+		const rz = z + Math.cos(dir) * out;
+		const heading = yaw + turn;
+		const s = createFlightState(
+			{ x: rx, y: groundAt(rx, rz) + config.spawn.altitude, z: rz },
+			heading,
+			config.spawn.speed,
+		);
+		fallback ??= s;
+		if (pathClear(s, heading, groundAt, solidAt)) return s;
+	}
+	return fallback as FlightState;
+}
+
+/** Is the straight glide ahead clear of terrain and solid things? Checks the wing tips too. */
+function pathClear(
+	s: FlightState,
+	yaw: number,
+	groundAt: Ground,
+	solidAt: Solid,
+): boolean {
+	const fx = -Math.sin(yaw);
+	const fz = -Math.cos(yaw);
+	const slope = Math.tan(-config.flight.glidePitch);
+	for (let d = 0; d <= config.crash.respawnClear; d += 5) {
+		const x = s.position.x + fx * d;
+		const z = s.position.z + fz * d;
+		const y = s.position.y - d * slope;
+		if (y < groundAt(x, z) + 10) return false;
+		for (const side of [-4, 0, 4]) {
+			if (solidAt(x - fz * side, y, z + fx * side)) return false;
+		}
+	}
+	return true;
 }
 
 function easeOutBack(x: number): number {

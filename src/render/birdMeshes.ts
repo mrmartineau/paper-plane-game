@@ -27,7 +27,10 @@ const B = [0, -0.15, 0]; // belly
 const HF = [0, 0.05, -0.2]; // wing hinge front
 const HB = [0, 0.05, 0.3]; // wing hinge back
 
-export function createBirdMeshes(scene: THREE.Scene, birds: Bird[]) {
+const CAPACITY = 512;
+
+/** A pool of bird meshes; `update` is given the birds near the player each frame. */
+export function createBirdMeshes(scene: THREE.Scene) {
 	const material = createPaperMaterial({
 		grainScale: config.paper.planeGrainScale,
 		objectSpace: true,
@@ -35,10 +38,10 @@ export function createBirdMeshes(scene: THREE.Scene, birds: Bird[]) {
 		emissive: 0xffffff,
 		emissiveIntensity: 0.15,
 	});
-	const n = Math.max(1, birds.length);
 	const make = (geo: THREE.BufferGeometry) => {
-		const mesh = new THREE.InstancedMesh(geo, material, n);
-		mesh.count = birds.length;
+		const mesh = new THREE.InstancedMesh(geo, material, CAPACITY);
+		mesh.count = 0;
+		mesh.setColorAt(0, PALETTE[0]); // create the colour buffer up front
 		mesh.castShadow = true;
 		mesh.frustumCulled = false;
 		scene.add(mesh);
@@ -47,12 +50,6 @@ export function createBirdMeshes(scene: THREE.Scene, birds: Bird[]) {
 	const body = make(tris([H, C, B, T, B, C]));
 	const left = make(tris([HF, [-0.65, 0.05, 0.15], HB]));
 	const right = make(tris([HF, HB, [0.65, 0.05, 0.15]]));
-	birds.forEach((b, i) => {
-		const c = PALETTE[b.tint % PALETTE.length];
-		body.setColorAt(i, c);
-		left.setColorAt(i, c);
-		right.setColorAt(i, c);
-	});
 
 	const pose: BirdPose = { x: 0, y: 0, z: 0, yaw: 0, bank: 0 };
 	const base = new THREE.Matrix4();
@@ -64,7 +61,8 @@ export function createBirdMeshes(scene: THREE.Scene, birds: Bird[]) {
 	const zAxis = new THREE.Vector3(0, 0, 1);
 
 	return {
-		update(time: number) {
+		update(all: Bird[], time: number) {
+			const birds = all.length > CAPACITY ? all.slice(0, CAPACITY) : all;
 			const size = config.birds.size;
 			birds.forEach((b, i) => {
 				birdPose(b, time, pose);
@@ -74,6 +72,10 @@ export function createBirdMeshes(scene: THREE.Scene, birds: Bird[]) {
 					s.setScalar(size),
 				);
 				body.setMatrixAt(i, base);
+				const c = PALETTE[b.tint % PALETTE.length];
+				body.setColorAt(i, c);
+				left.setColorAt(i, c);
+				right.setColorAt(i, c);
 				const flap =
 					(0.1 + 0.7 * b.flap) *
 					Math.sin(time * config.birds.flapSpeed + b.phase * 7);
@@ -86,6 +88,10 @@ export function createBirdMeshes(scene: THREE.Scene, birds: Bird[]) {
 					wing.makeRotationAxis(zAxis, flap).premultiply(base),
 				);
 			});
+			for (const mesh of [body, left, right]) {
+				mesh.count = birds.length;
+				if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+			}
 			body.instanceMatrix.needsUpdate = true;
 			left.instanceMatrix.needsUpdate = true;
 			right.instanceMatrix.needsUpdate = true;

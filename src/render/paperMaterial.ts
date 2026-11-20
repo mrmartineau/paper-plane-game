@@ -21,12 +21,15 @@ interface PaperOptions extends THREE.MeshLambertMaterialParameters {
 	/** Object space keeps the grain stuck to moving meshes (the plane). */
 	objectSpace?: boolean;
 	crease?: number;
+	/** Gentle waves (metres) for water sheets, driven by the shared `time` uniform. */
+	bob?: { amount: number; time: { value: number } };
 }
 
 export function createPaperMaterial({
 	grainScale,
 	objectSpace = false,
 	crease,
+	bob,
 	...params
 }: PaperOptions) {
 	const m = new THREE.MeshLambertMaterial(params);
@@ -38,6 +41,10 @@ export function createPaperMaterial({
 		shader.uniforms.uMottle = { value: p.mottle };
 		shader.uniforms.uJitter = { value: p.jitter };
 		shader.uniforms.uCrease = { value: crease ?? p.crease };
+		if (bob) {
+			shader.uniforms.uTime = bob.time;
+			shader.uniforms.uBob = { value: bob.amount };
+		}
 
 		shader.vertexShader = shader.vertexShader
 			.replace(
@@ -46,11 +53,21 @@ export function createPaperMaterial({
 attribute vec3 bary;
 varying vec3 vBary;
 varying vec3 vPaperPos;
-varying vec3 vPaperNormal;`,
+varying vec3 vPaperNormal;
+${bob ? "uniform float uTime, uBob;" : ""}`,
 			)
 			.replace(
 				"#include <begin_vertex>",
 				`#include <begin_vertex>
+${
+	bob
+		? `{
+	// Waves in world space, so they stay put while the sheet follows the player.
+	vec3 bw = (modelMatrix * vec4(transformed, 1.0)).xyz;
+	transformed.y += (sin(bw.x * 0.035 + uTime * 0.9) + sin(bw.z * 0.05 - uTime * 0.7)) * uBob;
+}`
+		: ""
+}
 vBary = bary;
 ${
 	objectSpace
@@ -115,6 +132,6 @@ float pTri(vec3 p, vec3 n) {
 			);
 	};
 	m.customProgramCacheKey = () =>
-		objectSpace ? "paper-object" : "paper-world";
+		`${objectSpace ? "paper-object" : "paper-world"}${bob ? "-bob" : ""}`;
 	return m;
 }

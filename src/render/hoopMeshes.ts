@@ -3,100 +3,71 @@ import { config } from "../config";
 import type { Hoop } from "../world/props";
 import { addBarycentric, createPaperMaterial } from "./paperMaterial";
 
-// Bright folded-paper hoops (an octagon with a square section) and their poles.
-// Floating hoops bob a little. A hoop you fly through turns gold and pulses.
+// Pool of bright folded-paper hoop rings (an octagon with a square section).
+// Floating hoops bob a little. A hoop you've flown through is gold, and pulses when you pass.
+// The poles are static and streamed with the world.
 
 const PALETTE = [0xe8745a, 0xe9b949, 0x4fa3a5, 0x9b7fc8, 0xe58fb0].map(
 	(c) => new THREE.Color(c),
 );
 const LIT = new THREE.Color(0xffe58a);
-const POLE = new THREE.Color(0xf4efe4);
+const CAPACITY = 256;
 
-export function createHoopMeshes(scene: THREE.Scene, hoops: Hoop[]) {
-	const tube = config.props.hoopTube;
-	const ringGeo = addBarycentric(
-		new THREE.TorusGeometry(1, tube, 4, 8).toNonIndexed(),
+export function createHoopMeshes(scene: THREE.Scene) {
+	const geo = addBarycentric(
+		new THREE.TorusGeometry(1, config.props.hoopTube, 4, 8).toNonIndexed(),
 	);
-	ringGeo.computeVertexNormals();
+	geo.computeVertexNormals();
 	const rings = new THREE.InstancedMesh(
-		ringGeo,
+		geo,
 		createPaperMaterial({
 			grainScale: config.paper.planeGrainScale / 4,
 			objectSpace: true,
 			emissive: 0xffffff,
 			emissiveIntensity: 0.12,
 		}),
-		Math.max(1, hoops.length),
+		CAPACITY,
 	);
 	rings.castShadow = true;
 	rings.frustumCulled = false;
-
-	const poleList = hoops.filter((h) => h.kind === "pole");
-	const poleGeo = addBarycentric(
-		new THREE.CylinderGeometry(1, 1, 1, 5).toNonIndexed(),
-	);
-	poleGeo.translate(0, 0.5, 0);
-	poleGeo.computeVertexNormals();
-	const poles = new THREE.InstancedMesh(
-		poleGeo,
-		createPaperMaterial({ grainScale: config.paper.terrainGrainScale * 4 }),
-		Math.max(1, poleList.length),
-	);
-	poles.castShadow = true;
-	poles.receiveShadow = true;
-	poles.count = poleList.length;
+	rings.count = 0;
+	rings.setColorAt(0, LIT); // create the colour buffer up front
+	scene.add(rings);
 
 	const m = new THREE.Matrix4();
 	const q = new THREE.Quaternion();
 	const p = new THREE.Vector3();
 	const s = new THREE.Vector3();
 	const up = new THREE.Vector3(0, 1, 0);
-	const color = new THREE.Color();
-
-	poleList.forEach((h, i) => {
-		const r = config.props.poleRadius;
-		poles.setMatrixAt(
-			i,
-			m.compose(
-				p.set(h.x, h.base - 0.5, h.z),
-				q.identity(),
-				s.set(r, h.y - h.R - h.base + 0.5, r),
-			),
-		);
-		poles.setColorAt(i, POLE);
-	});
-	scene.add(rings, poles);
-
-	const passedAt = new Float64Array(hoops.length).fill(-Infinity);
 
 	return {
-		/** Mark a hoop as flown through. */
-		pass(i: number, time: number) {
-			passedAt[i] = time;
-		},
-		update(time: number) {
-			hoops.forEach((h, i) => {
+		/** `passedAt`: hoop id → time you last flew through it. */
+		update(hoops: Hoop[], time: number, passedAt: Map<string, number>) {
+			const n = Math.min(hoops.length, CAPACITY);
+			for (let i = 0; i < n; i++) {
+				const h = hoops[i];
 				const bob =
 					h.kind === "float"
-						? Math.sin(time * 0.6 + i) * config.props.hoopBob
+						? Math.sin(time * 0.6 + h.color) * config.props.hoopBob
 						: 0;
-				// TorusGeometry's hole faces local Z, same as the hoop.
-				q.setFromAxisAngle(up, h.yaw);
-				const since = time - passedAt[i];
+				const since = time - (passedAt.get(h.id) ?? -Infinity);
 				const pulse =
 					since < 0.5 ? 1 + 0.15 * Math.sin((since / 0.5) * Math.PI) : 1;
+				// TorusGeometry's hole faces local Z, same as the hoop.
 				rings.setMatrixAt(
 					i,
-					m.compose(p.set(h.x, h.y + bob, h.z), q, s.setScalar(h.R * pulse)),
+					m.compose(
+						p.set(h.x, h.y + bob, h.z),
+						q.setFromAxisAngle(up, h.yaw),
+						s.setScalar(h.R * pulse),
+					),
 				);
 				rings.setColorAt(
 					i,
-					passedAt[i] > -Infinity
-						? LIT
-						: color.copy(PALETTE[h.color % PALETTE.length]),
+					passedAt.has(h.id) ? LIT : PALETTE[h.color % PALETTE.length],
 				);
-			});
-			rings.count = hoops.length;
+			}
+			rings.count = n;
 			rings.instanceMatrix.needsUpdate = true;
 			if (rings.instanceColor) rings.instanceColor.needsUpdate = true;
 		},
