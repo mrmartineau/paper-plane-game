@@ -17,7 +17,8 @@ Tracks [paper-plane-game-plan.md](./paper-plane-game-plan.md). Tick items as the
 - [x] Flight model, pure (`src/plane/flight.ts`): quaternion orientation, roll/pitch input with smoothing, auto-level, bank turns, lift capped, speed/height trade, drag ∝ v², gentle stall
 - [x] Loops and rolls (release the stick upside down and it rolls upright)
 - [x] Keyboard input (WASD / arrows, Space = boost)
-- [x] Boost trail: little scrunched paper balls that trail behind and drop + FOV kick
+- [x] Rocket boost: gravity, stall and sink off while held; fly anywhere, even straight up; 1.6× agility; up to ~340 km/h, speed bleeds off after
+- [x] Boost effects: paper-ball trail, big FOV kick, camera shake, rocket rumble + hiss
 - [x] Mouse input (pointer lock, relative stick that re-centres, left button = boost)
 - [x] Crash → plane scrunches into a paper ball that rolls downhill → respawn nearby → fold open (`src/plane/crash.ts`)
 - [x] Controls card: keyboard button bottom-left (native popover), opens on start, `?` / `H` toggles (`src/ui/help.ts`)

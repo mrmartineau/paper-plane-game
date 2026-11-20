@@ -22,7 +22,10 @@ export const config = {
 		autoLevel: 1.2, // 1/s the wings return to level with no input
 		inputSmoothing: 6, // 1/s stick smoothing
 		turnCoeff: 0.045, // yaw rate = turnCoeff * sin(bank) * airspeed
-		boost: 6, // m/s² forward push while boost is held
+		boost: 32, // m/s² forward push while boost is held (gravity is off while boosting)
+		boostMaxSpeed: 95, // m/s (~340 km/h)
+		boostAgility: 1.6, // pitch and roll rate multiplier while boosting
+		boostSinkDecay: 40, // m/s² any stall sink clears while boosting
 		maxSpeed: 60,
 		clearance: 0.4, // metres above ground before it counts as a crash
 	},
@@ -168,8 +171,8 @@ export const config = {
 	},
 
 	boostTrail: {
-		count: 60,
-		rate: 28, // paper balls per second while boosting
+		count: 110,
+		rate: 45, // paper balls per second while boosting
 		life: 1.6, // seconds
 		size: 0.11, // ball radius, metres
 		inherit: 0.8, // share of the plane's velocity the balls keep
@@ -178,7 +181,8 @@ export const config = {
 		puff: 3, // m/s pushed out behind the plane
 		gravity: 5, // m/s², light paper falls slowly
 		drag: 1.2, // 1/s
-		fovKick: 8, // degrees added while boosting
+		fovKick: 16, // degrees added while boosting
+		shake: 0.12, // metres of camera shake while boosting
 	},
 
 	spawn: {
@@ -237,6 +241,7 @@ export const config = {
 		windCutoffMin: 250, // Hz
 		windCutoffPerMs: 70, // Hz per m/s of airspeed
 		rustleGap: 0.35, // seconds between rustles
+		boostGain: 0.9, // rocket rumble while boosting
 		rustleTurnRate: 1.6, // rad/s of bank change that rustles the paper
 	},
 
@@ -362,6 +367,7 @@ export const config = {
 		minutes: 10,
 		warmup: 5, // seconds ignored at the start while the world loads
 		altitude: 150, // metres above the ground the autopilot holds
+		speed: 45, // m/s the autopilot cruises at (boosts below it)
 	},
 
 	camera: {

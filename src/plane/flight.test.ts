@@ -94,6 +94,27 @@ describe("flight", () => {
 		expect(axes(s.orientation).up.y).toBeGreaterThan(0.95);
 	});
 
+	it("boost is a rocket: straight up, no stall, then gliding resumes", () => {
+		const up = { ...start(), orientation: fromEuler(0, Math.PI / 2 - 0.02, 0) };
+		const rocket = fly(up, 4, { pitch: 0, roll: 0, boost: true });
+		expect(rocket.position.y - up.position.y).toBeGreaterThan(150); // shot up
+		expect(rocket.airspeed).toBeGreaterThan(40);
+		expect(rocket.sink).toBe(0);
+		expect(axes(rocket.orientation).forward.y).toBeGreaterThan(0.95); // still pointing up
+		// Let go: it slows, the nose comes over, and it glides again.
+		const after = fly(rocket, 25);
+		expect(after.airspeed).toBeLessThan(c.maxSpeed);
+		expect(Math.abs(pitchOf(after) - c.glidePitch)).toBeLessThan(0.15);
+	});
+
+	it("boost tops out at boostMaxSpeed, and the extra speed bleeds off after", () => {
+		const fast = fly(start(), 15, { pitch: 0, roll: 0, boost: true });
+		expect(fast.airspeed).toBeGreaterThan(c.maxSpeed);
+		expect(fast.airspeed).toBeLessThanOrEqual(c.boostMaxSpeed);
+		const coast = fly(fast, 0.2);
+		expect(coast.airspeed).toBeGreaterThan(c.maxSpeed); // no sudden stop
+	});
+
 	it("rising air lifts the plane, sinking air pushes it down", () => {
 		const up = fly(start(), 5, idle, { ...stillAir, airAt: () => 5 });
 		const down = fly(start(), 5, idle, { ...stillAir, airAt: () => -5 });

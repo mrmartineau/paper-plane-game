@@ -62,7 +62,7 @@ function svgMarkup(): string {
 		.join("");
 
 	const speedTicks: string[] = [];
-	for (let v = 0; v <= 300; v += 10) {
+	for (let v = 0; v <= 400; v += 10) {
 		const y = -v * SPEED_PX;
 		const major = v % 20 === 0;
 		speedTicks.push(`<path class="thin" d="M${major ? 62 : 68} ${y} H76"/>`);
@@ -107,7 +107,7 @@ function svgMarkup(): string {
 	<rect class="box" x="480" y="${CY - 13}" width="70" height="26" rx="4"/>
 	<text class="big" data-el="alt" x="542" y="${CY + 6}" text-anchor="end">0</text>
 	<rect data-el="vario" x="554" y="${CY}" width="5" height="0"/>
-	<text data-el="climb" x="515" y="${CY + 32}" text-anchor="middle">0.0</text>
+	<text data-el="climb" x="516" y="${CY + 118}" text-anchor="middle">0.0</text>
 	<g data-el="stall" visibility="hidden">
 		<rect class="alert" x="${CX - 40}" y="${CY - 152}" width="80" height="24" rx="4" data-blink/>
 		<text x="${CX}" y="${CY - 135}" text-anchor="middle" class="big">STALL</text>

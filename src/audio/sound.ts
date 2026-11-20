@@ -14,6 +14,7 @@ export function createSound() {
 	let windFilter: BiquadFilterNode;
 	let noise: AudioBuffer;
 	let lastRustle = 0;
+	let boostGain: GainNode;
 
 	function start() {
 		if (ctx) {
@@ -38,6 +39,26 @@ export function createSound() {
 		windGain.gain.value = 0;
 		wind.connect(windFilter).connect(windGain).connect(master);
 		wind.start();
+
+		// Boost: a low rumble plus a hiss, faded in while boosting.
+		const rocket = ctx.createBufferSource();
+		rocket.buffer = noise;
+		rocket.loop = true;
+		const low = ctx.createBiquadFilter();
+		low.type = "lowpass";
+		low.frequency.value = 180;
+		const hiss = ctx.createBiquadFilter();
+		hiss.type = "bandpass";
+		hiss.frequency.value = 2200;
+		hiss.Q.value = 0.7;
+		const hissGain = ctx.createGain();
+		hissGain.gain.value = 0.25;
+		boostGain = ctx.createGain();
+		boostGain.gain.value = 0;
+		rocket.connect(low).connect(boostGain);
+		rocket.connect(hiss).connect(hissGain).connect(boostGain);
+		boostGain.connect(master);
+		rocket.start(0, 0.7); // offset so it doesn't phase with the wind loop
 	}
 	for (const ev of ["pointerdown", "keydown", "touchend"])
 		addEventListener(ev, start);
@@ -87,10 +108,15 @@ export function createSound() {
 
 	return {
 		/** Every frame: wind follows airspeed; volume follows the settings. */
-		update(airspeed: number) {
+		update(airspeed: number, boosting: boolean) {
 			if (!ctx) return;
 			const t = ctx.currentTime;
 			master.gain.setTargetAtTime(settings.audio ? settings.volume : 0, t, 0.1);
+			boostGain.gain.setTargetAtTime(
+				boosting ? a.boostGain : 0,
+				t,
+				boosting ? 0.05 : 0.25,
+			);
 			const k = Math.min(1, airspeed / a.windFullSpeed);
 			windGain.gain.setTargetAtTime(a.windMin + k ** 1.6 * a.windMax, t, 0.15);
 			windFilter.frequency.setTargetAtTime(

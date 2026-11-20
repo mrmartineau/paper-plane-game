@@ -11,6 +11,7 @@ export function createChaseCam(
 ) {
 	const desired = new THREE.Vector3();
 	const offset = new THREE.Vector3();
+	let boostAmount = 0;
 	const look = new THREE.Vector3();
 	const fwd = new THREE.Vector3();
 	const planeUp = new THREE.Vector3();
@@ -44,6 +45,15 @@ export function createChaseCam(
 		desired.y -= air * c.airLag; // camera trails vertical air movement, so the plane visibly lifts or drops
 		offset.lerp(desired, 1 - Math.exp(-c.positionLerp * dt));
 		camera.position.copy(pos).add(offset);
+		// Rocket rumble: a little shake while boosting (smooth sines, not random jitter).
+		boostAmount += ((boosting ? 1 : 0) - boostAmount) * (1 - Math.exp(-6 * dt));
+		if (boostAmount > 0.01) {
+			const t = performance.now() / 1000;
+			const a = config.boostTrail.shake * boostAmount;
+			camera.position.x += Math.sin(t * 37) * a;
+			camera.position.y += Math.sin(t * 43 + 1) * a;
+			camera.position.z += Math.sin(t * 29 + 2) * a;
+		}
 		const floor =
 			groundAt(camera.position.x, camera.position.z) + c.groundMargin;
 		if (camera.position.y < floor) camera.position.y = floor;

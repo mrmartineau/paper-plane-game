@@ -42,15 +42,15 @@ export function createBench() {
 	}
 
 	return {
-		/** Autopilot: hold `altitude` above the ground, wings level, boost on. */
-		steer(input: InputState, altitude: number, climb: number) {
+		/** Autopilot: hold `altitude` above the ground, wings level, boost to hold `speed`. */
+		steer(input: InputState, altitude: number, climb: number, speed: number) {
 			if (done) return;
 			input.pitch = Math.max(
 				-1,
 				Math.min(1, (b.altitude - altitude) * 0.03 - climb * 0.15),
 			);
 			input.roll = 0;
-			input.boost = true;
+			input.boost = speed < b.speed; // hold a steady cruise, not full rocket
 		},
 		frame(ms: number) {
 			if (done) return;

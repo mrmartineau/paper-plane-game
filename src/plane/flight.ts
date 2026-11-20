@@ -106,6 +106,10 @@ export function stepFlight(
 	const stickRoll = s.stickRoll + (input.roll - s.stickRoll) * k;
 	const idlePitch = Math.abs(input.pitch) < 0.05;
 	const idleRoll = Math.abs(input.roll) < 0.05;
+	// Boost is a rocket: gravity, stall and sink switch off, the plane goes where the
+	// nose points, and it turns faster. Let go and normal gliding takes over.
+	const boost = input.boost;
+	const agility = boost ? c.boostAgility : 1;
 
 	const v = s.airspeed;
 	const liftFrac = liftFraction(v, c);
@@ -119,18 +123,19 @@ export function stepFlight(
 
 	// 1. Stick input in the plane's own frame. Less pitch authority in a stall.
 	// With both sticks idle the wings roll back to level (this also rolls you out of inverted).
-	let roll = stickRoll * c.rollRate * dt;
+	let roll = stickRoll * c.rollRate * agility * dt;
 	if (idleRoll && idlePitch)
 		roll -= bank * Math.min(1, c.autoLevel * dt) * level;
-	q = qmul(q, qaxis(X, stickPitch * c.pitchRate * dt * (0.4 + 0.6 * liftFrac)));
+	const authority = boost ? 1 : 0.4 + 0.6 * liftFrac;
+	q = qmul(q, qaxis(X, stickPitch * c.pitchRate * agility * dt * authority));
 	q = qmul(q, qaxis(Z, -roll));
 
 	// 2. Bank turns the plane (rotation about world up).
 	q = qmul(qaxis(Y, c.turnCoeff * r.y * v * dt), q);
 
 	// Glide-angle relax (upright, no pitch input) and stall nose-drop, about a world-horizontal axis.
-	let nose = -stall * c.stallNoseDrop * dt;
-	if (idlePitch && u.y > 0)
+	let nose = boost ? 0 : -stall * c.stallNoseDrop * dt;
+	if (idlePitch && u.y > 0 && !boost)
 		nose +=
 			(c.glidePitch - Math.asin(f.y)) * Math.min(1, c.pitchStability * dt);
 	const pitchAxis =
@@ -140,15 +145,26 @@ export function stepFlight(
 	const { forward: nf, up: nu } = axes(q);
 
 	// 4 + 5. Speed trades with height; drag ∝ v². Boost is a push along the nose.
+	const gravityAlongPath = boost ? 0 : -c.gravity * nf.y;
 	let airspeed =
-		v + (-c.gravity * nf.y - c.drag * v * v + (input.boost ? c.boost : 0)) * dt;
-	airspeed = clamp(airspeed, 0, c.maxSpeed);
+		v + (gravityAlongPath - c.drag * v * v + (boost ? c.boost : 0)) * dt;
+	// Over the glide limit after a boost? Drag bleeds it off; no sudden stop.
+	airspeed = clamp(
+		airspeed,
+		0,
+		Math.max(
+			boost ? c.boostMaxSpeed : c.maxSpeed,
+			Math.min(v, c.boostMaxSpeed),
+		),
+	);
 
 	// 3 + 6. Gravity vs lift across the path. Missing lift (stall, knife edge) builds sink.
 	// |up.y| means lift holds you inverted too: arcade, and it keeps loops clean.
 	const need = c.gravity * Math.sqrt(Math.max(0, 1 - nf.y * nf.y));
 	const support = lift * Math.abs(nu.y);
-	const sink = clamp(s.sink + (need - support) * dt, 0, c.maxSink);
+	const sink = boost
+		? Math.max(0, s.sink - c.boostSinkDecay * dt)
+		: clamp(s.sink + (need - support) * dt, 0, c.maxSink);
 
 	// 7. Rising or sinking air moves the plane up or down.
 	const air = env.airAt(s.position.x, s.position.y, s.position.z);

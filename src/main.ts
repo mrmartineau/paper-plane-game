@@ -242,7 +242,7 @@ function update(dt: number) {
 	const i = input.update(dt);
 	if (input.gamepad.start) menu.toggle();
 	if (paused || photo.active) return;
-	bench?.steer(i, telemetry.altitude, telemetry.climb);
+	bench?.steer(i, telemetry.altitude, telemetry.climb, state.airspeed);
 	prev = state;
 	const fresh = crash.update(dt);
 	if (fresh) place(fresh);
@@ -319,6 +319,7 @@ const fwd = new THREE.Vector3();
 const vel = new THREE.Vector3();
 const planeRight = new THREE.Vector3();
 const planeUp = new THREE.Vector3();
+let hudRoll = 0; // degrees, last good bank angle for the HUD
 const shake = new THREE.Quaternion();
 const shakeEuler = new THREE.Euler();
 
@@ -415,6 +416,13 @@ function render(alpha: number, frameDt: number) {
 	world.setNight(light.night);
 	clouds.setNight(light.night);
 
+	// Bank angle for the HUD. Pointing nearly straight up or down, "level wings" means
+	// nothing and the angle spins, so keep the last good value there.
+	if (Math.abs(fwd.y) < 0.95) {
+		planeRight.set(1, 0, 0).applyQuaternion(plane.mesh.quaternion);
+		planeUp.set(0, 1, 0).applyQuaternion(plane.mesh.quaternion);
+		hudRoll = THREE.MathUtils.radToDeg(Math.atan2(-planeRight.y, planeUp.y));
+	}
 	const bearing =
 		(THREE.MathUtils.radToDeg(Math.atan2(fwd.x, -fwd.z)) + 360) % 360;
 	hud.update(
@@ -430,12 +438,7 @@ function render(alpha: number, frameDt: number) {
 			pitch: THREE.MathUtils.radToDeg(
 				Math.asin(THREE.MathUtils.clamp(fwd.y, -1, 1)),
 			),
-			roll: THREE.MathUtils.radToDeg(
-				Math.atan2(
-					-planeRight.set(1, 0, 0).applyQuaternion(plane.mesh.quaternion).y,
-					planeUp.set(0, 1, 0).applyQuaternion(plane.mesh.quaternion).y,
-				),
-			),
+			roll: hudRoll,
 			wind: wind.at(time),
 		},
 		time,
@@ -448,7 +451,7 @@ function render(alpha: number, frameDt: number) {
 		time,
 	);
 	water.update(pos.x, pos.z, time);
-	sound.update(flying && !paused ? state.airspeed : 0);
+	sound.update(flying && !paused ? state.airspeed : 0, boosting && !paused);
 	clouds.update(nearbyClouds, wind.driftTo(time));
 	const runView = run.view();
 	courseMeshes.update(
