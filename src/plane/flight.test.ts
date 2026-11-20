@@ -108,11 +108,31 @@ describe("flight", () => {
 	});
 
 	it("boost tops out at boostMaxSpeed, and the extra speed bleeds off after", () => {
-		const fast = fly(start(), 15, { pitch: 0, roll: 0, boost: true });
+		const fast = fly(start(), 5.5, { pitch: 0, roll: 0, boost: true });
 		expect(fast.airspeed).toBeGreaterThan(c.maxSpeed);
 		expect(fast.airspeed).toBeLessThanOrEqual(c.boostMaxSpeed);
 		const coast = fly(fast, 0.2);
 		expect(coast.airspeed).toBeGreaterThan(c.maxSpeed); // no sudden stop
+	});
+
+	it("boost runs out, locks until refilled, and gliding refills it", () => {
+		const hold = { pitch: 0, roll: 0, boost: true };
+		const dry = fly(start(), 1 / c.boostDrain + 0.5, hold);
+		expect(dry.fuel).toBeLessThan(0.05); // empty, and just starting to refill
+		expect(dry.boostLocked).toBe(true);
+		const still = fly(dry, 0.5, hold); // holding boost does nothing while locked
+		expect(still.boosting).toBe(false);
+		expect(still.fuel).toBeGreaterThan(0); // and it still refills
+		const refilled = fly(dry, c.boostRestart / c.boostRefill + 0.2); // glide
+		const again = stepFlight(refilled, hold, dt, c, stillAir).state;
+		expect(again.boosting).toBe(true);
+	});
+
+	it("rising air refills boost faster", () => {
+		const empty = { ...start(), fuel: 0 };
+		const calm = fly(empty, 2);
+		const thermal = fly(empty, 2, idle, { ...stillAir, airAt: () => 5 });
+		expect(thermal.fuel).toBeCloseTo(calm.fuel * c.boostRefillLift, 5);
 	});
 
 	it("rising air lifts the plane, sinking air pushes it down", () => {

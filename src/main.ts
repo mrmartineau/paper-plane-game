@@ -358,7 +358,7 @@ function render(alpha: number, frameDt: number) {
 	);
 
 	const flying = crash.phase !== "rolling";
-	const boosting = flying && input.state.boost;
+	const boosting = flying && state.boosting; // actually firing (not just held, with fuel)
 	fwd.set(0, 0, -1).applyQuaternion(plane.mesh.quaternion);
 	boostTrail.update(
 		frameDt,
@@ -434,6 +434,8 @@ function render(alpha: number, frameDt: number) {
 			air: airHere,
 			stalling: flying && telemetry.lift < 0.9,
 			boosting,
+			fuel: state.fuel,
+			boostLocked: state.boostLocked,
 			// Attitude from the plane's axes: pitch of the nose, bank of the wings.
 			pitch: THREE.MathUtils.radToDeg(
 				Math.asin(THREE.MathUtils.clamp(fwd.y, -1, 1)),

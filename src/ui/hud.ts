@@ -13,6 +13,8 @@ export interface HudInfo {
 	air: number; // m/s of rising (+) or sinking (-) air
 	stalling: boolean;
 	boosting: boolean;
+	fuel: number; // boost tank 0..1
+	boostLocked: boolean; // ran dry, refilling
 	pitch: number; // degrees, nose up > 0
 	roll: number; // degrees, right wing down > 0
 	wind: { x: number; z: number }; // m/s, world space
@@ -112,7 +114,11 @@ function svgMarkup(): string {
 		<rect class="alert" x="${CX - 40}" y="${CY - 152}" width="80" height="24" rx="4" data-blink/>
 		<text x="${CX}" y="${CY - 135}" text-anchor="middle" class="big">STALL</text>
 	</g>
-	<text data-el="boost" class="warn label" x="44" y="${CY + 118}" text-anchor="middle" visibility="hidden">BOOST</text>`;
+	<g data-el="fuel">
+		<text data-el="boost" class="label" x="${CX - 66}" y="${CY + 126}" text-anchor="end">BOOST</text>
+		<rect class="thin" x="${CX - 60}" y="${CY + 118}" width="120" height="9" rx="2"/>
+		<rect data-el="fuel-bar" class="fill" x="${CX - 59}" y="${CY + 119}" width="118" height="7" rx="1.5"/>
+	</g>`;
 }
 
 export function createHud(stats: Stats) {
@@ -147,6 +153,7 @@ export function createHud(stats: Stats) {
 		climb: part<SVGTextElement>("climb"),
 		stall: part<SVGGElement>("stall"),
 		boost: part<SVGTextElement>("boost"),
+		fuelBar: part<SVGRectElement>("fuel-bar"),
 	};
 
 	const field = (name: string) =>
@@ -201,7 +208,17 @@ export function createHud(stats: Stats) {
 				);
 			}
 			g.stall?.setAttribute("visibility", info.stalling ? "visible" : "hidden");
-			g.boost?.setAttribute("visibility", info.boosting ? "visible" : "hidden");
+			// Fuel bar: white normally, orange when low, red and blinking while it refills from empty.
+			if (g.fuelBar) {
+				g.fuelBar.setAttribute("width", String(Math.max(0, 118 * info.fuel)));
+				g.fuelBar.setAttribute(
+					"class",
+					info.boostLocked ? "alert" : info.fuel < 0.25 ? "warn" : "fill",
+				);
+				if (info.boostLocked) g.fuelBar.setAttribute("data-blink", "");
+				else g.fuelBar.removeAttribute("data-blink");
+			}
+			g.boost?.setAttribute("class", info.boosting ? "warn label" : "label");
 
 			if (time - lastText < 0.1) return;
 			lastText = time;

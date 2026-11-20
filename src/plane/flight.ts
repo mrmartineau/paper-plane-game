@@ -29,6 +29,9 @@ export interface FlightState {
 	sink: number; // m/s of downward slip when lift can't hold the plane up
 	stickPitch: number; // smoothed input
 	stickRoll: number;
+	fuel: number; // boost tank, 0..1
+	boostLocked: boolean; // ran dry: boost waits until the tank refills to boostRestart
+	boosting: boolean; // boost was actually firing this step
 }
 
 export interface FlightEnv {
@@ -60,6 +63,9 @@ export function createFlightState(
 		sink: 0,
 		stickPitch: 0,
 		stickRoll: 0,
+		fuel: 1,
+		boostLocked: false,
+		boosting: false,
 	};
 }
 
@@ -108,7 +114,14 @@ export function stepFlight(
 	const idleRoll = Math.abs(input.roll) < 0.05;
 	// Boost is a rocket: gravity, stall and sink switch off, the plane goes where the
 	// nose points, and it turns faster. Let go and normal gliding takes over.
-	const boost = input.boost;
+	// Boost burns fuel; gliding refills it (faster in rising air). Run dry and it
+	// stays off until the tank is back to boostRestart, so it doesn't stutter.
+	const air = env.airAt(s.position.x, s.position.y, s.position.z);
+	let boostLocked = s.boostLocked && s.fuel < c.boostRestart;
+	const boost = input.boost && !boostLocked && s.fuel > 0;
+	const refill = c.boostRefill * (air > 0.5 ? c.boostRefillLift : 1);
+	const fuel = clamp(s.fuel + (boost ? -c.boostDrain : refill) * dt, 0, 1);
+	if (boost && fuel <= 0) boostLocked = true;
 	const agility = boost ? c.boostAgility : 1;
 
 	const v = s.airspeed;
@@ -167,7 +180,6 @@ export function stepFlight(
 		: clamp(s.sink + (need - support) * dt, 0, c.maxSink);
 
 	// 7. Rising or sinking air moves the plane up or down.
-	const air = env.airAt(s.position.x, s.position.y, s.position.z);
 	const wind = env.windAt(s.position.x, s.position.y, s.position.z);
 
 	const velocity = {
@@ -195,6 +207,9 @@ export function stepFlight(
 			sink,
 			stickPitch,
 			stickRoll,
+			fuel,
+			boostLocked,
+			boosting: boost,
 		},
 		crashed,
 	};

@@ -26,6 +26,10 @@ export const config = {
 		boostMaxSpeed: 95, // m/s (~340 km/h)
 		boostAgility: 1.6, // pitch and roll rate multiplier while boosting
 		boostSinkDecay: 40, // m/s² any stall sink clears while boosting
+		boostDrain: 1 / 6, // tank per second while boosting (a full tank lasts 6 s)
+		boostRefill: 1 / 12, // tank per second while gliding (12 s to fill)
+		boostRefillLift: 2, // refill multiplier in rising air
+		boostRestart: 0.2, // after running dry, boost comes back at this much fuel
 		maxSpeed: 60,
 		clearance: 0.4, // metres above ground before it counts as a crash
 	},
@@ -182,7 +186,7 @@ export const config = {
 		gravity: 5, // m/s², light paper falls slowly
 		drag: 1.2, // 1/s
 		fovKick: 16, // degrees added while boosting
-		shake: 0.12, // metres of camera shake while boosting
+		shake: 0.03, // metres of camera shake while boosting
 	},
 
 	spawn: {
