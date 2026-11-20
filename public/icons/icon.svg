@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><title>Paper Plane</title>
+<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8db7d6"/><stop offset="1" stop-color="#cfe3ea"/></linearGradient></defs>
+<rect width="512" height="512" fill="url(#sky)"/>
+<path d="M0 400 L120 330 L230 380 L340 310 L512 370 V512 H0 Z" fill="#9fbf7f"/>
+<path d="M0 440 L150 400 L300 440 L512 410 V512 H0 Z" fill="#7fa565"/>
+<g transform="translate(256 236) rotate(-14)">
+<path d="M-150 10 L150 -70 L60 110 L-10 45 Z" fill="#fbf8f1" stroke="#3d4a50" stroke-width="8" stroke-linejoin="round"/>
+<path d="M150 -70 L-10 45 L-20 120 Z" fill="#d8d4c8" stroke="#3d4a50" stroke-width="8" stroke-linejoin="round"/>
+</g></svg>

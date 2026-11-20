@@ -96,6 +96,6 @@ Pulled forward because they were one-liners: sun shadow that follows the plane, 
 - [x] Audio, all synthesised (WebAudio): wind (louder/brighter with speed), paper rustle on sharp turns, ring/hoop chimes, finish tune, crumple on crash; starts on first gesture; menu sound toggle + volume (`src/audio/sound.ts`)
 - [x] Photo mode (O, or the menu): sim frozen, UI hidden, orbit camera, Save PNG (`src/ui/photoMode.ts`)
 - [x] Seed sharing: `?seed=` in the URL; menu: fly this seed, new world, copy link
-- [ ] PWA manifest
+- [x] PWA manifest + icons (192, 512, maskable, SVG) + Apple touch icon, full-screen display. No offline service worker yet
 - [ ] `?bench` scripted flight with frame-time stats
 - [ ] Deploy to Cloudflare Pages
