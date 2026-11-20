@@ -666,6 +666,15 @@ export function createFeatures(
 				inCity(x, z, p.cityMargin)
 			)
 				continue;
+			// Islands in a cluster must not overlap each other (nothing above a landing pad).
+			if (
+				out.rocks.some(
+					(o) =>
+						Math.hypot(o.x - x, o.z - z) < (o.s + s) * 1.3 + 10 &&
+						Math.abs(o.y - y) < (o.s + s) * 2.4,
+				)
+			)
+				continue;
 			out.rocks.push({ x, y, z, s, yaw, tint });
 			out.pads.push({
 				kind: "helipad",
@@ -687,6 +696,16 @@ export function createFeatures(
 					base: y,
 					trunk: 0,
 					reach: s,
+				},
+				// The grassy cap is a wider disc than the ball: solid all the way across, so you land on it, not through it.
+				{
+					type: "pole",
+					x,
+					z,
+					base: y - 0.25 * s,
+					top: y + sk.capTop * s,
+					r: sk.capRadius * s,
+					reach: sk.capRadius * s,
 				},
 				{
 					type: "spike",
@@ -781,7 +800,7 @@ export function createFeatures(
 				x,
 				y,
 				z,
-				r: R * 0.9,
+				r: R * f,
 			});
 			// The body tapers to a point: a hanging cone from the top edge to the tip.
 			out.colliders.push({

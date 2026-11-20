@@ -112,4 +112,30 @@ describe("landing", () => {
 			),
 		).toBeNull();
 	});
+
+	it("every pad is solid across its whole surface, so you can't fly through it", () => {
+		const w = config.world;
+		const height = createHeight("paper", w);
+		const features = createFeatures(
+			"paper",
+			height,
+			createClimate("paper", w),
+			config.props,
+			w,
+		);
+		const pads = features.near(0, 0, 3000).pads;
+		expect(pads.some((p) => p.kind === "helipad")).toBe(true);
+		for (const pad of pads) {
+			for (let a = 0; a < Math.PI * 2; a += Math.PI / 4) {
+				for (const k of [0, 0.5, 0.9]) {
+					const x = pad.x + Math.cos(a) * pad.r * k;
+					const z = pad.z + Math.sin(a) * pad.r * k;
+					expect(features.solidAt(x, pad.y - 0.5, z)).toBe(true); // just under the surface
+					// Clear above it (mountain tops have trees beside the runway, so only check the helipads and runway centres).
+					if (pad.kind === "helipad" || k === 0)
+						expect(features.solidAt(x, pad.y + 1.5, z)).toBe(false);
+				}
+			}
+		}
+	});
 });
