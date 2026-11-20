@@ -40,7 +40,14 @@ export const SHAPES = {
 	house: { w: 5, d: 7, h: 3.5, roof: 2.6 },
 	arch: { R: 20, r: 4.5 }, // ring radius to the tube centre, tube radius
 	// Floating island at radius 1: grass cap on top, rock body, a spike hanging below.
-	skyRock: { body: 1, spikeR: 0.6, spikeTop: -0.3, spikeLen: 1.8 },
+	skyRock: {
+		body: 1,
+		spikeR: 0.6,
+		spikeTop: -0.3,
+		spikeLen: 1.8,
+		capTop: 0.675,
+		capRadius: 0.85,
+	},
 	// Floating mountain at unit size: flat grassy top at y = 0, radius 1, tapering to a point at y = -1.
 	// [radius, y] from the top edge down to the tip. Scaled by (R, H, R).
 	floater: {
@@ -178,9 +185,18 @@ export interface HoopCell {
 	hoop: Hoop | null;
 	colliders: Collider[];
 }
+/** A flat grassy top you can land on. */
+export interface Pad {
+	x: number;
+	y: number; // surface height
+	z: number;
+	r: number; // usable radius
+}
+
 export interface SkyCell {
 	rocks: SkyRock[];
 	vines: Vine[];
+	pads: Pad[];
 	colliders: Collider[];
 }
 export interface FloaterCell {
@@ -188,6 +204,7 @@ export interface FloaterCell {
 	trees: Tree[];
 	waterfalls: Waterfall[];
 	vines: Vine[];
+	pads: Pad[];
 	colliders: Collider[];
 }
 
@@ -391,7 +408,7 @@ export function createFeatures(
 	// --- Small floating islands, some trailing vines ---
 	const sk = SHAPES.skyRock;
 	const skyCell = memoCells((cx, cz): SkyCell => {
-		const out: SkyCell = { rocks: [], vines: [], colliders: [] };
+		const out: SkyCell = { rocks: [], vines: [], pads: [], colliders: [] };
 		const rand = rngFor(seed, "skyRock", cx, cz);
 		if (rand() > p.skyRockChance) return out;
 		const ax = (cx + rand()) * p.skyRockCell;
@@ -409,8 +426,19 @@ export function createFeatures(
 			const bottom = y + (sk.spikeTop - sk.spikeLen) * s;
 			if (bottom < ground(x, z) + 15 || inLane(x, z)) continue;
 			out.rocks.push({ x, y, z, s, yaw, tint });
+			out.pads.push({ x, y: y + sk.capTop * s, z, r: sk.capRadius * s });
 			out.colliders.push(
-				{ type: "sphere", x, y, z, r: s * f, base: y, trunk: 0, reach: s },
+				// The rock ball stays under the grassy cap, so you can land on it.
+				{
+					type: "sphere",
+					x,
+					y: y - 0.15 * s,
+					z,
+					r: 0.7 * s,
+					base: y,
+					trunk: 0,
+					reach: s,
+				},
 				{
 					type: "spike",
 					x,
@@ -457,6 +485,7 @@ export function createFeatures(
 			trees: [],
 			waterfalls: [],
 			vines: [],
+			pads: [],
 			colliders: [],
 		};
 		const rand = rngFor(seed, "floater", cx, cz);
@@ -495,6 +524,7 @@ export function createFeatures(
 			}
 			if (blocked) continue;
 			out.floaters.push({ x, y, z, R, H, yaw, tint });
+			out.pads.push({ x, y, z, r: R * 0.9 });
 			// The body tapers to a point: a hanging cone from the top edge to the tip.
 			out.colliders.push({
 				type: "spike",
@@ -748,6 +778,7 @@ export function createFeatures(
 			arches: [] as Arch[],
 			hoops: [] as Hoop[],
 			skyRocks: [] as SkyRock[],
+			pads: [] as Pad[],
 			floaters: [] as Floater[],
 			vines: [] as Vine[],
 			waterfalls: [] as Waterfall[],
@@ -763,15 +794,40 @@ export function createFeatures(
 		forCells(x, z, range, p.skyRockCell, (cx, cz) => {
 			const c = skyCell(cx, cz);
 			out.skyRocks.push(...c.rocks);
+			out.pads.push(...c.pads);
 			out.vines.push(...c.vines);
 		});
 		forCells(x, z, range, p.floaterCell, (cx, cz) => {
 			const c = floaterCell(cx, cz);
 			out.floaters.push(...c.floaters);
+			out.pads.push(...c.pads);
 			out.vines.push(...c.vines);
 			out.waterfalls.push(...c.waterfalls);
 		});
 		return out;
+	}
+
+	/** The landing pad under (x, z) whose surface is within `tolerance` of y, if any. */
+	function padAt(
+		x: number,
+		y: number,
+		z: number,
+		tolerance: number,
+	): Pad | null {
+		let found: Pad | null = null;
+		const check = (pads: Pad[]) => {
+			for (const pad of pads) {
+				if ((x - pad.x) ** 2 + (z - pad.z) ** 2 > pad.r * pad.r) continue;
+				if (Math.abs(y - pad.y) <= tolerance) found = pad;
+			}
+		};
+		forCells(x, z, 60 + p.skyRockMax, p.skyRockCell, (cx, cz) =>
+			check(skyCell(cx, cz).pads),
+		);
+		forCells(x, z, 180 + p.floaterRadiusMax, p.floaterCell, (cx, cz) =>
+			check(floaterCell(cx, cz).pads),
+		);
+		return found;
 	}
 
 	return {
@@ -781,6 +837,7 @@ export function createFeatures(
 		skyCell,
 		floaterCell,
 		solidAt,
+		padAt,
 		near,
 		biomeAt,
 	};

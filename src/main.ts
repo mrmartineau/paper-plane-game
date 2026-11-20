@@ -21,6 +21,13 @@ import {
 	liftFraction,
 	stepFlight,
 } from "./plane/flight";
+import {
+	land,
+	type Parked,
+	slide,
+	takeOff,
+	touchdownOk,
+} from "./plane/landing";
 import { createPlaneModel } from "./plane/model";
 import { createAirColumns } from "./render/airColumns";
 import { createBirdMeshes } from "./render/birdMeshes";
@@ -214,9 +221,11 @@ function place(s: FlightState) {
 	prev = s;
 	snapped = false;
 	quality.hold(); // the world reloads around the new spot; don't judge those frames
+	parked = null;
 }
 
 let paused = false;
+let parked: Parked | null = null; // landed on a floating island
 
 // Animated things near the player, refreshed twice a second.
 let nearbyHoops: Hoop[] = [];
@@ -251,8 +260,37 @@ function update(dt: number) {
 		return;
 	}
 
+	// Parked on a floating island: slide, refuel, boost to take off.
+	if (parked) {
+		if (i.boost) {
+			state = takeOff(state, parked, config.flight);
+			parked = null;
+			sound.chime(0.6);
+		} else {
+			const r = slide(state, parked, dt, config.flight);
+			state = r.state;
+			if (r.off)
+				parked = null; // slid off the edge: you're flying again
+			else {
+				coursePanel.flash("Landed · refuelling · Space to take off", time);
+				telemetry.climb = 0;
+				return;
+			}
+		}
+	}
+
 	const res = stepFlight(state, i, dt, config.flight, env);
 	if (res.crashed) {
+		// A gentle touchdown on a floating island's grassy top is a landing, not a crash.
+		const p = res.state.position;
+		const pad = features.padAt(p.x, p.y, p.z, config.flight.landPadTolerance);
+		if (pad && touchdownOk(res.state, config.flight)) {
+			({ state, parked } = land(res.state, pad, config.flight));
+			prev = state;
+			tracker.stats.landings++;
+			sound.chime(0.5);
+			return;
+		}
 		crash.start(state);
 		tracker.crash();
 		sound.crumple();

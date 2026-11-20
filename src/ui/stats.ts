@@ -10,6 +10,7 @@ export interface Stats {
 	topSpeed: number; // m/s, this session
 	crashes: number;
 	hoops: number; // hoop passes, this session
+	landings: number; // on floating islands, this session
 }
 
 export function createStats() {
@@ -22,6 +23,7 @@ export function createStats() {
 		topSpeed: 0,
 		crashes: 0,
 		hoops: 0,
+		landings: 0,
 	};
 	// Loop = nose goes up past vertical, over the top upside down, down the back, and level again.
 	let stage = 0;

@@ -30,6 +30,15 @@ export const config = {
 		boostRefill: 1 / 12, // tank per second while gliding (12 s to fill)
 		boostRefillLift: 2, // refill multiplier in rising air
 		boostRestart: 0.2, // after running dry, boost comes back at this much fuel
+		landLevel: 0.8, // landing needs the plane's up axis at least this upright (wings level-ish)
+		landMaxDive: 0.45, // ... the nose no steeper than this (sin of the dive angle)
+		landMaxSink: 9, // ... and dropping slower than this, m/s
+		landFriction: 1.2, // 1/s, sliding to a stop on the grass
+		landRefill: 3, // boost refill multiplier while parked
+		takeoffSpeed: 16, // m/s
+		takeoffPitch: 0.35, // rad, nose up on take-off
+		restPitch: 0.05, // rad, nose up while parked
+		landPadTolerance: 4, // metres above/below a pad's surface that still counts as touching it
 		maxSpeed: 60,
 		clearance: 0.4, // metres above ground before it counts as a crash
 	},
