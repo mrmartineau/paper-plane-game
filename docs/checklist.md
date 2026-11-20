@@ -70,14 +70,14 @@ Pulled forward because they were one-liners: sun shadow that follows the plane, 
 
 ## Phase 4: courses
 
-- [ ] Course generation per 4×4-chunk region (Catmull-Rom spline, 10–20 points)
+- [x] Course generation per 4×4-chunk region (Catmull-Rom spline, 10–20 points), rings nudged clear of rocks and islands (`src/courses/generate.ts`)
 - [x] Ring pass detection, segment vs disc (`src/courses/rings.ts`, tested); used by free hoops now
-- [ ] Course ring chains
-- [ ] Start gate (big, flagged, visible from far)
-- [ ] Timer + course HUD (time, rings, ghost delta)
-- [ ] `storage.ts` + best times
-- [ ] Ghost record (100ms) / playback, keyed `seed:courseId`
-- [ ] **Done when:** every seed has several findable courses, finishing saves a raceable ghost
+- [x] Course ring chains; rings coloured by state (next = gold, passed = green, missed = grey) (`src/render/courseMeshes.ts`)
+- [x] Start gate: big red ring with a tall spinning striped ribbon, visible from far; flying through starts the run
+- [x] Timer + course HUD: ring n/total, arrow + distance to the next ring, time, ± vs best; hint near a gate; finish message (`src/ui/coursePanel.ts`, `src/courses/run.ts`)
+- [x] `storage.ts` + best times (more rings first, then faster)
+- [x] Ghost record (100ms) / playback, Int16-packed + base64, keyed `seed:courseId` (`src/courses/ghost.ts`)
+- [x] **Done when:** every seed has several findable courses, finishing saves a raceable ghost (tests: ≥4 courses within 4 km; run → finish → best + ghost saved; ghost encode/decode)
 
 ## Phase 5: mobile
 

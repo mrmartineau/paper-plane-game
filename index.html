@@ -84,6 +84,11 @@
         position: absolute; left: 50%; bottom: 5px; translate: -50% 0;
         font-size: 11px; color: var(--ink-soft);
       }
+      .course {
+        position: fixed; top: 66px; left: 50%; translate: -50% 0;
+        padding: 6px 12px; font-weight: 600; white-space: nowrap;
+      }
+      .course[hidden] { display: none; }
       .flight {
         position: fixed; right: 16px; bottom: 16px; padding: 12px 14px; min-width: 190px;
       }
@@ -113,6 +118,7 @@
     </button>
 
     <div id="hud">
+      <div id="course" class="card course" role="status" hidden></div>
       <div class="compass card" aria-hidden="true">
         <div class="compass-tape"></div>
         <span data-hud="heading">0°</span>
@@ -159,6 +165,7 @@
       <p><span class="swatch" style="background: var(--warm)"></span>Warm confetti rises: fly in to climb.</p>
       <p><span class="swatch" style="background: var(--cool)"></span>Blue confetti sinks: it pushes you down.</p>
       <p>Wind pushes you along. Where it blows up a hill, it lifts you (ridge lift).</p>
+      <p>Find a red start gate with a striped ribbon and fly through it to start a course. Rings turn green as you pass them. Your best run comes back as a ghost.</p>
       <p>Fly through the paper hoops (they turn gold) and the sandstone arches. Dodge the trees, rocks, floating islands and paper birds.</p>
     </div>
 

@@ -4,7 +4,11 @@ import { createChaseCam } from "./camera/chaseCam";
 import { config } from "./config";
 import { createInput } from "./core/input";
 import { startLoop } from "./core/loop";
+import { storage } from "./core/storage";
+import { type Course, createCourses } from "./courses/generate";
+import { decodeGhost, encodeGhost } from "./courses/ghost";
 import { passedThrough } from "./courses/rings";
+import { type Best, createRun } from "./courses/run";
 import { createDevJumps, createDevPanel, type Telemetry } from "./debug";
 import { createCrash, respawnAt } from "./plane/crash";
 import {
@@ -19,11 +23,13 @@ import { createAirColumns } from "./render/airColumns";
 import { createBirdMeshes } from "./render/birdMeshes";
 import { createBoostTrail } from "./render/boostTrail";
 import { createClouds } from "./render/clouds";
+import { createCourseMeshes } from "./render/courseMeshes";
 import { createHoopMeshes } from "./render/hoopMeshes";
 import { createSky } from "./render/sky";
 import { createVineMeshes } from "./render/vines";
 import { createWater } from "./render/water";
 import { createWorldMeshes } from "./render/world";
+import { clock, createCoursePanel, pointTo } from "./ui/coursePanel";
 import { setupHelp } from "./ui/help";
 import { createHud } from "./ui/hud";
 import { createStats } from "./ui/stats";
@@ -139,6 +145,26 @@ const crash = createCrash(scene, groundAt, env.solidAt);
 const chase = createChaseCam(camera, groundAt);
 const tracker = createStats();
 const hud = createHud(tracker.stats);
+
+// --- Courses: find a start gate, fly the rings, beat your ghost ---
+const courseGen = createCourses(
+	seed,
+	groundAt,
+	features.solidAt,
+	config.courses,
+);
+const run = createRun(config.courses, {
+	loadBest: (id) => storage.get<Best | null>(`best:${seed}:${id}`, null),
+	loadGhost: (id) => decodeGhost(storage.get(`ghost:${seed}:${id}`, "")),
+	save: (id, best, ghost) => {
+		storage.set(`best:${seed}:${id}`, best);
+		storage.set(`ghost:${seed}:${id}`, encodeGhost(ghost));
+	},
+});
+const courseMeshes = createCourseMeshes(scene, plane.mesh.geometry);
+const coursePanel = createCoursePanel();
+let nearbyCourses: Course[] = [];
+let nearGate: Best | null | undefined; // best on the start gate you're near (undefined = none near)
 const bench = params.has("bench") ? createBench() : null;
 
 let state: FlightState = respawnAt(0, 0, 0, groundAt, env.solidAt);
@@ -171,6 +197,13 @@ function gather(x: number, z: number) {
 	nearbyHoops = n.hoops;
 	nearbyVines = n.vines;
 	nearbyClouds = cloudField.near(x, z, wind.driftTo(time));
+	nearbyCourses = courseGen.near(x, z, config.courses.range);
+	const gate = nearbyCourses.find(
+		(c) => Math.hypot(c.gate.x - x, c.gate.z - z) < 250,
+	);
+	nearGate = gate
+		? storage.get<Best | null>(`best:${seed}:${gate.id}`, null)
+		: undefined;
 }
 
 function update(dt: number) {
@@ -201,6 +234,26 @@ function update(dt: number) {
 	telemetry.air = airHere;
 	telemetry.lift = liftFraction(state.airspeed, config.flight);
 	tracker.step(dt, state, telemetry.altitude, airHere);
+
+	for (const e of run.step(
+		dt,
+		prev.position,
+		state.position,
+		state.orientation,
+		nearbyCourses,
+	)) {
+		if (e === "finish") {
+			const f = run.takeFinished();
+			if (f) {
+				const best = f.newBest ? " · new best!" : "";
+				coursePanel.flash(
+					`Finished ${clock(f.best.time)} · ${f.best.rings}/${f.course.rings.length} rings${best}`,
+					time,
+				);
+			}
+		}
+		if (e === "abandon") coursePanel.flash("Course dropped", time);
+	}
 
 	for (const h of nearbyHoops) {
 		if (passedThrough(h, prev.position, state.position)) {
@@ -292,10 +345,11 @@ function render(alpha: number, frameDt: number) {
 	sun.target.position.copy(pos);
 	sun.position.copy(pos).add(sunOffset);
 
+	const bearing =
+		(THREE.MathUtils.radToDeg(Math.atan2(fwd.x, -fwd.z)) + 360) % 360;
 	hud.update(
 		{
-			bearing:
-				(THREE.MathUtils.radToDeg(Math.atan2(fwd.x, -fwd.z)) + 360) % 360,
+			bearing,
 			altitude: telemetry.altitude,
 			speed: state.airspeed,
 			climb: state.velocity.y,
@@ -314,6 +368,22 @@ function render(alpha: number, frameDt: number) {
 	);
 	water.update(pos.x, pos.z, time);
 	clouds.update(nearbyClouds, wind.driftTo(time));
+	const runView = run.view();
+	courseMeshes.update(
+		nearbyCourses,
+		run.active,
+		run.ringStates(),
+		time,
+		runView?.ghost ?? null,
+	);
+	const nextRing =
+		runView && run.active ? run.active.rings[runView.next] : null;
+	coursePanel.update(
+		runView,
+		run.active ? undefined : nearGate,
+		time,
+		nextRing ? pointTo(pos.x, pos.z, bearing, nextRing.x, nextRing.z) : "",
+	);
 	sky.update(camera);
 	renderer.render(scene, camera);
 }
@@ -340,6 +410,7 @@ if (params.has("debug")) {
 			features,
 			birdsNear: birdField.near,
 			columnsNear: air.columnsNear,
+			coursesNear: courseGen.near,
 			groundAt,
 		}),
 	});

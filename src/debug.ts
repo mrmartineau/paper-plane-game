@@ -1,4 +1,5 @@
 import { config } from "./config";
+import type { Course } from "./courses/generate";
 import { createFlightState, type FlightState, type Vec3 } from "./plane/flight";
 import { type Bird, birdPose } from "./world/birds";
 import { type Features, SHAPES } from "./world/props";
@@ -82,6 +83,7 @@ export function createDevJumps(ctx: {
 	features: Features;
 	birdsNear: (x: number, z: number, range: number) => Bird[];
 	columnsNear: (x: number, z: number, range: number) => AirColumn[];
+	coursesNear: (x: number, z: number, range: number) => Course[];
 	groundAt: (x: number, z: number) => number;
 }) {
 	const range = 3000;
@@ -183,6 +185,17 @@ export function createDevJumps(ctx: {
 				f.yaw,
 				200,
 			);
+		},
+		"go to course"() {
+			const { x, z } = ctx.position();
+			const c = nearest(
+				ctx.coursesNear(x, z, range).map((course) => ({
+					...course.gate,
+					x: course.gate.x,
+					z: course.gate.z,
+				})),
+			);
+			if (c) lineUp(c.x, c.y, c.z, c.yaw, 120);
 		},
 		"go to waterfall"() {
 			const w = nearest(around().waterfalls);

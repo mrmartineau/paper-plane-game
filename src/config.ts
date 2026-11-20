@@ -123,6 +123,31 @@ export const config = {
 		range: 1100,
 	},
 
+	// Courses: ring chains along a spline. Fly through the start gate to begin.
+	courses: {
+		region: 512, // metres (4×4 chunks); the seed decides if a region has a course
+		chance: 0.45,
+		pointsMin: 10, // spline control points
+		pointsMax: 20,
+		stepMin: 70, // metres between control points
+		stepMax: 110,
+		maxTurn: 0.6, // rad, per control point
+		climbMax: 18, // metres up or down per control point
+		heightMin: 25, // metres above the highest ground under each leg
+		heightMax: 70,
+		spacing: 85, // metres between rings along the path
+		ringRadius: 8,
+		gateRadius: 12,
+		tube: 0.07, // × radius
+		groundClearance: 4,
+		minRings: 6,
+		range: 1100, // metres; courses shown within this
+		abandonDistance: 700, // metres from the next ring before a run is dropped
+		abandonAfter: 12, // seconds that far away
+		ghostInterval: 0.1, // seconds between ghost samples
+		beaconHeight: 70, // metres; the tall striped ribbon above each start gate
+	},
+
 	// Paper birds: flocks on big circles, and a few circling in some thermals. Solid.
 	birds: {
 		flockCell: 640, // metres; at most one flock per cell
