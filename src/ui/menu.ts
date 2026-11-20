@@ -3,6 +3,7 @@ import {
 	type Quality,
 	saveSettings,
 	settings,
+	type TimeOfDay,
 } from "../core/settings";
 
 // Pause menu (a native <dialog>): resume, settings, seed sharing.
@@ -25,6 +26,7 @@ export function createMenu(hooks: MenuHooks) {
 	const controls = $<HTMLSelectElement>("[name=controls]");
 	const invert = $<HTMLInputElement>("[name=invert]");
 	const sensitivity = $<HTMLInputElement>("[name=sensitivity]");
+	const timeOfDay = $<HTMLSelectElement>("[name=time]");
 	const tierLabel = $<HTMLElement>("[data-tier]");
 	const seedInput = $<HTMLInputElement>("[name=seed]");
 	const copied = $<HTMLElement>("[data-copied]");
@@ -33,6 +35,11 @@ export function createMenu(hooks: MenuHooks) {
 	controls.value = settings.controls;
 	invert.checked = settings.invertPitch;
 	sensitivity.value = String(settings.sensitivity);
+	timeOfDay.value = settings.timeOfDay;
+	timeOfDay.addEventListener("change", () => {
+		settings.timeOfDay = timeOfDay.value as TimeOfDay;
+		saveSettings();
+	});
 	seedInput.value = hooks.seed;
 	tierLabel.textContent = hooks.onQuality(settings.quality);
 

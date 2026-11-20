@@ -229,6 +229,80 @@ export const config = {
 		baseOffset: 18,
 	},
 
+	// Day/night: time of day runs 0..1 (0 = midnight, 0.5 = noon). Keys are blended in between.
+	dayNight: {
+		dayLength: 900, // seconds for a full day
+		start: 0.32, // morning
+		keys: [
+			{
+				t: 0,
+				horizon: 0x2a3550,
+				zenith: 0x0f1830,
+				sun: 0x9fb0d8,
+				sunIntensity: 0.35,
+				ambient: 0.35,
+			},
+			{
+				t: 0.21,
+				horizon: 0x3a4a6a,
+				zenith: 0x1a2a4a,
+				sun: 0xa8b4d8,
+				sunIntensity: 0.4,
+				ambient: 0.4,
+			},
+			{
+				t: 0.26,
+				horizon: 0xf2c6a0,
+				zenith: 0x7f9cc4,
+				sun: 0xffb377,
+				sunIntensity: 1.2,
+				ambient: 0.7,
+			},
+			{
+				t: 0.34,
+				horizon: 0xcfe3ea,
+				zenith: 0x8db7d6,
+				sun: 0xfff4e0,
+				sunIntensity: 2.2,
+				ambient: 1.1,
+			},
+			{
+				t: 0.66,
+				horizon: 0xcfe3ea,
+				zenith: 0x8db7d6,
+				sun: 0xfff4e0,
+				sunIntensity: 2.2,
+				ambient: 1.1,
+			},
+			{
+				t: 0.74,
+				horizon: 0xf0a787,
+				zenith: 0x5d6f9c,
+				sun: 0xff9a66,
+				sunIntensity: 1.1,
+				ambient: 0.6,
+			},
+			{
+				t: 0.79,
+				horizon: 0x3a4a6a,
+				zenith: 0x1a2a4a,
+				sun: 0xa8b4d8,
+				sunIntensity: 0.4,
+				ambient: 0.4,
+			},
+			{
+				t: 1,
+				horizon: 0x2a3550,
+				zenith: 0x0f1830,
+				sun: 0x9fb0d8,
+				sunIntensity: 0.35,
+				ambient: 0.35,
+			},
+		],
+		sunDistance: 180, // metres; the shadow camera sits this far from the plane, toward the sun
+		lanternGlow: 1.6, // emissive strength at full night
+	},
+
 	// Quality tiers: picked from the device (or the pause menu), stepped down if frames are slow.
 	quality: {
 		tiers: {

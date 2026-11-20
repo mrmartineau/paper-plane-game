@@ -26,6 +26,7 @@ import { createBoostTrail } from "./render/boostTrail";
 import { createClouds } from "./render/clouds";
 import { createCourseMeshes } from "./render/courseMeshes";
 import { createHoopMeshes } from "./render/hoopMeshes";
+import { createLighting } from "./render/lighting";
 import { createQuality } from "./render/quality";
 import { createSky } from "./render/sky";
 import { createVineMeshes } from "./render/vines";
@@ -58,10 +59,16 @@ const r = config.render;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(r.skyColor);
 scene.fog = new THREE.Fog(r.skyColor, r.fogNear, r.fogFar);
-scene.add(new THREE.HemisphereLight(0xffffff, 0xb8a98c, r.ambientIntensity));
+const ambient = new THREE.HemisphereLight(
+	0xffffff,
+	0xb8a98c,
+	r.ambientIntensity,
+);
+scene.add(ambient);
 
 const sun = new THREE.DirectionalLight(r.sunColor, r.sunIntensity);
-const sunOffset = new THREE.Vector3(80, 140, 40);
+const sunOffset = new THREE.Vector3(80, 140, 40); // replaced each frame by the day/night cycle
+const lighting = createLighting();
 sun.castShadow = true;
 sun.shadow.mapSize.set(r.shadowMapSize, r.shadowMapSize);
 Object.assign(sun.shadow.camera, {
@@ -357,6 +364,23 @@ function render(alpha: number, frameDt: number) {
 	sun.target.position.copy(pos);
 	sun.position.copy(pos).add(sunOffset);
 
+	// Day and night.
+	const dayTime =
+		settings.timeOfDay === "day"
+			? 0.45
+			: settings.timeOfDay === "night"
+				? 0.02
+				: config.dayNight.start + time / config.dayNight.dayLength;
+	const light = lighting.at(dayTime);
+	sunOffset.copy(light.sunDir).multiplyScalar(config.dayNight.sunDistance);
+	sun.color.copy(light.sun);
+	sun.intensity = light.sunIntensity;
+	ambient.intensity = light.ambient;
+	(scene.fog as THREE.Fog).color.copy(light.horizon);
+	(scene.background as THREE.Color).copy(light.horizon);
+	world.setNight(light.night);
+	clouds.setNight(light.night);
+
 	const bearing =
 		(THREE.MathUtils.radToDeg(Math.atan2(fwd.x, -fwd.z)) + 360) % 360;
 	hud.update(
@@ -396,7 +420,7 @@ function render(alpha: number, frameDt: number) {
 		time,
 		nextRing ? pointTo(pos.x, pos.z, bearing, nextRing.x, nextRing.z) : "",
 	);
-	sky.update(camera);
+	sky.update(camera, light.horizon, light.zenith, light.night);
 	renderer.render(scene, camera);
 }
 

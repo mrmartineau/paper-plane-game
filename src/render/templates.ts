@@ -19,6 +19,7 @@ export const ROOFS = [0xc8735a, 0x7f97ad, 0xb58a5e, 0x9b6b7f];
 export const POLE = 0xf4efe4;
 const GRASS = 0x7fa564;
 const SKY_ROCK = 0x9d958a;
+const LANTERN = 0xffd08a;
 
 /** Paint a geometry one colour, make it non-indexed, and keep only position + colour. */
 export function part(
@@ -234,6 +235,24 @@ function floater(): THREE.BufferGeometry {
 	return g;
 }
 
+/** A small paper lantern: a squashed octagonal drum with dark caps. Hangs by a house door. */
+function lantern(): THREE.BufferGeometry {
+	return merge([
+		part(
+			new THREE.CylinderGeometry(0.32, 0.32, 0.55, 8).translate(0, 0, 0),
+			LANTERN,
+		),
+		part(
+			new THREE.CylinderGeometry(0.2, 0.26, 0.08, 8).translate(0, 0.31, 0),
+			TRUNK,
+		),
+		part(
+			new THREE.CylinderGeometry(0.26, 0.2, 0.08, 8).translate(0, -0.31, 0),
+			TRUNK,
+		),
+	]);
+}
+
 function pole(): THREE.BufferGeometry {
 	return part(
 		new THREE.CylinderGeometry(1, 1, 1, 5).translate(0, 0.5, 0),
@@ -260,6 +279,7 @@ function buildAll() {
 		skyRock: skyRock(),
 		floater: floater(),
 		pole: pole(),
+		lantern: lantern(),
 	};
 }
 export function templates() {

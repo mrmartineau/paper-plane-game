@@ -4,6 +4,7 @@ import { storage } from "./storage";
 
 export type Quality = "auto" | "low" | "medium" | "high";
 export type Controls = "auto" | "keyboard" | "tilt" | "stick";
+export type TimeOfDay = "cycle" | "day" | "night";
 
 export interface Settings {
 	quality: Quality;
@@ -12,6 +13,7 @@ export interface Settings {
 	sensitivity: number; // 0.5 .. 2
 	audio: boolean;
 	volume: number; // 0 .. 1
+	timeOfDay: TimeOfDay;
 }
 
 const DEFAULTS: Settings = {
@@ -21,6 +23,7 @@ const DEFAULTS: Settings = {
 	sensitivity: 1,
 	audio: true,
 	volume: 0.7,
+	timeOfDay: "cycle",
 };
 
 export const settings: Settings = {

@@ -4,7 +4,7 @@ import { config } from "../config";
 import { rngFor } from "../core/rng";
 import { buildChunk, type ChunkArrays } from "../world/chunk";
 import type { ClimateFn, HeightFn } from "../world/height";
-import type { Features, Waterfall } from "../world/props";
+import { type Features, SHAPES, type Waterfall } from "../world/props";
 import { createChunkWorkers } from "./chunkWorkers";
 import { addBarycentric, createPaperMaterial } from "./paperMaterial";
 import { createStreamer, type StreamLayer } from "./streamer";
@@ -39,6 +39,11 @@ export function createWorldMeshes(
 		side: THREE.DoubleSide,
 	});
 	const waterfall = createWaterfallMaterial();
+	const lanternMaterial = new THREE.MeshLambertMaterial({
+		vertexColors: true,
+		emissive: 0xff9a3c,
+		emissiveIntensity: 0,
+	});
 
 	const mesh = (
 		geo: THREE.BufferGeometry | null,
@@ -113,7 +118,31 @@ export function createWorldMeshes(
 						sx: h.s,
 					})),
 				];
-				return mesh(bake(items), propMaterial);
+				const props = mesh(bake(items), propMaterial);
+				// A lantern by each house door; it glows at night.
+				const hs = SHAPES.house;
+				const lanterns = mesh(
+					bake(
+						c.houses.map((h) => {
+							const out = (hs.d / 2 + 0.35) * h.s;
+							return {
+								geo: t.lantern,
+								x: h.x + Math.sin(h.yaw) * out,
+								y: h.y + hs.h * 0.7 * h.s,
+								z: h.z + Math.cos(h.yaw) * out,
+								yaw: h.yaw,
+								sx: h.s,
+							};
+						}),
+					),
+					lanternMaterial,
+					false,
+				);
+				if (!lanterns) return props;
+				const group = new THREE.Group();
+				if (props) group.add(props);
+				group.add(lanterns);
+				return group;
 			},
 		},
 		{
@@ -237,6 +266,10 @@ export function createWorldMeshes(
 
 	const streamer = createStreamer(scene, layers);
 	return {
+		/** 0 = day, 1 = night: lanterns glow up as it gets dark. */
+		setNight(night: number) {
+			lanternMaterial.emissiveIntensity = night * config.dayNight.lanternGlow;
+		},
 		update(px: number, pz: number, time: number, budgetMs: number) {
 			waterfall.flow.offset.y = time * 0.45; // water runs down the sheets
 			return streamer.update(px, pz, budgetMs);

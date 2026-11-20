@@ -83,6 +83,10 @@ export function createClouds(scene: THREE.Scene) {
 	const up = new THREE.Vector3(0, 1, 0);
 
 	return {
+		/** Clouds stop glowing at night. */
+		setNight(night: number) {
+			material.emissiveIntensity = 0.3 * (1 - night);
+		},
 		update(clouds: Cloud[], drift: { x: number; z: number }) {
 			const counts = new Array(SHAPES).fill(0);
 			for (const c of clouds) {

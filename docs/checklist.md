@@ -92,7 +92,7 @@ Pulled forward because they were one-liners: sun shadow that follows the plane, 
 
 ## Phase 6: polish
 
-- [ ] Day/night cycle + paper lanterns
+- [x] Day/night cycle (15 min): sky, fog, sun colour and direction, moonlight, stars; lanterns by house doors glow at night; menu: cycle / always day / always night (`src/render/lighting.ts`, `src/render/sky.ts`)
 - [ ] Audio: wind, rustle, ring chime, crumple
 - [ ] Photo mode (orbit cam, PNG save)
 - [ ] Seed sharing (`?seed=` is already read; add copy link + new seed)
