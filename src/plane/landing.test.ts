@@ -2,8 +2,14 @@ import { describe, expect, it } from "vitest";
 import { config } from "../config";
 import { createClimate, createHeight } from "../world/height";
 import { createFeatures, type Pad } from "../world/props";
-import { axes, createFlightState, fromEuler } from "./flight";
-import { land, slide, takeOff, touchdownOk } from "./landing";
+import {
+	axes,
+	createFlightState,
+	type FlightEnv,
+	fromEuler,
+	stepFlight,
+} from "./flight";
+import { assist, land, slide, takeOff, touchdownOk } from "./landing";
 
 const c = config.flight;
 const pad: Pad = {
@@ -22,11 +28,12 @@ const coming = (pitch: number, roll: number, sink: number) => ({
 });
 
 describe("landing", () => {
-	it("gentle and level lands; steep, banked or fast-dropping crashes", () => {
+	it("nearly any touchdown lands; only a hard, upside-down or vertical hit crashes", () => {
 		expect(touchdownOk(coming(-0.1, 0, 2), c)).toBe(true);
-		expect(touchdownOk(coming(-0.8, 0, 2), c)).toBe(false); // diving
-		expect(touchdownOk(coming(-0.1, 1.2, 2), c)).toBe(false); // banked hard
-		expect(touchdownOk(coming(-0.1, 0, 15), c)).toBe(false); // dropping fast
+		expect(touchdownOk(coming(-0.6, 0.9, 12), c)).toBe(true); // sloppy but fine
+		expect(touchdownOk(coming(-1.3, 0, 2), c)).toBe(false); // nose straight down
+		expect(touchdownOk(coming(-0.1, 1.45, 2), c)).toBe(false); // on its side
+		expect(touchdownOk(coming(-0.1, 0, 30), c)).toBe(false); // slammed in
 	});
 
 	it("slides to a stop on the pad and refills the tank", () => {
@@ -72,5 +79,37 @@ describe("landing", () => {
 		const f = features.near(0, 0, 3000).floaters[0];
 		expect(features.padAt(f.x, f.y + 1, f.z, 3)).not.toBeNull();
 		expect(features.padAt(f.x, f.y + 50, f.z, 3)).toBeNull();
+	});
+
+	it("assist pulls a hands-off plane onto the pad, and is off when too high", () => {
+		const env: FlightEnv = {
+			groundAt: () => -Infinity,
+			airAt: () => 0,
+			// The pad's island: solid below its surface, within its radius.
+			solidAt: (x, y, z) =>
+				y < pad.y && (x - pad.x) ** 2 + (z - pad.z) ** 2 < pad.r ** 2,
+			windAt: () => ({ x: 0, z: 0 }),
+		};
+		const idle = { pitch: 0, roll: 0, boost: false };
+		let s = createFlightState({ x: 0, y: pad.y + 30, z: pad.r + 50 }, 0, 18); // 50 m short, heading at it
+		let landed = false;
+		for (let i = 0; i < 20 * 60 && !landed; i++) {
+			s = assist(s, pad, 1 / 60, c) ?? s;
+			const res = stepFlight(s, idle, 1 / 60, c, env);
+			if (res.crashed) {
+				expect(touchdownOk(res.state, c)).toBe(true);
+				landed = true;
+			}
+			s = res.state;
+		}
+		expect(landed).toBe(true);
+		expect(
+			assist(
+				createFlightState({ x: 0, y: pad.y + 500, z: 0 }, 0, 18),
+				pad,
+				1 / 60,
+				c,
+			),
+		).toBeNull();
 	});
 });

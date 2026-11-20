@@ -31,15 +31,22 @@ export const config = {
 		boostRefill: 1 / 12, // tank per second while gliding (12 s to fill)
 		boostRefillLift: 2, // refill multiplier in rising air
 		boostRestart: 0.2, // after running dry, boost comes back at this much fuel
-		landLevel: 0.8, // landing needs the plane's up axis at least this upright (wings level-ish)
-		landMaxDive: 0.45, // ... the nose no steeper than this (sin of the dive angle)
-		landMaxSink: 9, // ... and dropping slower than this, m/s
+		landLevel: 0.3, // landing needs the plane's up axis at least this upright (forgiving: not upside down)
+		landMaxDive: 0.85, // ... the nose no steeper than this (sin of the dive angle)
+		landMaxSink: 25, // ... and dropping slower than this, m/s
+		assistRange: 60, // metres beyond a pad's edge where it starts to pull you in
+		assistHeight: 60, // metres above a pad where the pull works
+		assistPull: 10, // m/s toward the pad centre, at full pull
+		assistSink: 4, // m/s extra descent toward the pad, at full pull
+		assistLevel: 3, // 1/s wings level out and the nose settles
+		approachSpeed: 14, // m/s the assist slows you to
+		assistCooldown: 4, // seconds after take-off before a pad pulls you in again
 		landFriction: 1.2, // 1/s, sliding to a stop on the grass
 		landRefill: 3, // boost refill multiplier while parked
 		takeoffSpeed: 16, // m/s
 		takeoffPitch: 0.35, // rad, nose up on take-off
 		restPitch: 0.05, // rad, nose up while parked
-		landPadTolerance: 4, // metres above/below a pad's surface that still counts as touching it
+		landPadTolerance: 8, // metres above/below a pad's surface that still counts as touching it
 		maxSpeed: 60,
 		clearance: 0.4, // metres above ground before it counts as a crash
 	},

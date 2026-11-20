@@ -22,6 +22,7 @@ import {
 	stepFlight,
 } from "./plane/flight";
 import {
+	assist,
 	land,
 	type Parked,
 	slide,
@@ -240,6 +241,7 @@ function place(s: FlightState) {
 
 let paused = false;
 let parked: Parked | null = null; // landed on a floating island
+let assistOffUntil = 0; // no landing pull until this time (just took off)
 
 // Animated things near the player, refreshed twice a second.
 let nearbyHoops: Hoop[] = [];
@@ -300,6 +302,7 @@ function update(dt: number) {
 		if (i.boost) {
 			state = takeOff(state, parked, config.flight);
 			parked = null;
+			assistOffUntil = time + config.flight.assistCooldown; // don't suck you straight back down
 			sound.chime(0.6);
 		} else {
 			const r = slide(state, parked, dt, config.flight);
@@ -311,6 +314,17 @@ function update(dt: number) {
 				telemetry.climb = 0;
 				return;
 			}
+		}
+	}
+
+	// Near a landing pad (and not boosting), the pad pulls you in.
+	if (!i.boost && time > assistOffUntil) {
+		for (const pad of nearbyPads) {
+			const pulled = assist(state, pad, dt, config.flight);
+			if (!pulled) continue;
+			state = pulled;
+			coursePanel.flash("Landing… hold boost to pull away", time);
+			break;
 		}
 	}
 

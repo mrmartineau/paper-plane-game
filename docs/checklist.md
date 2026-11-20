@@ -48,6 +48,7 @@ Pulled forward because they were one-liners: sun shadow that follows the plane, 
 - [x] Floating rock islands (grass cap, hanging spike), solid
 - [x] Land on floating islands and mountains: gentle + level touchdown on the grassy top; slide to a stop; boost refills 3× faster; Space takes off; slide off the edge to fly (`src/plane/landing.ts`)
 - [x] Obvious landing spots: paper runways (dashes, threshold bars, arrows, edge lights that glow at night) on flat floating-mountain tops, kept clear of trees; H helipads on small islands; HUD points to the nearest pad
+- [x] Easy landing: pads pull you in (toward the centre, down, wings level, slowing) within 60 m; boost pulls away; forgiving touchdown; no pull for 4 s after take-off
 - [x] Floating mountains (Avatar-style pillars) in groups, with trees on top, paper waterfalls that fade in mid-air, and thick swaying vines (solid) (`src/render/floaterMeshes.ts`)
 - [x] Paper hoops: floating or on poles, clear approach lanes, turn gold when flown through, counted in the HUD
 - [x] Collision with trees, rocks, arches, islands, hoop rims, poles and birds (forgiving: colliders 80% of mesh size)
