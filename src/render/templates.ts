@@ -62,6 +62,18 @@ export function crumple(
 
 const merge = (parts: THREE.BufferGeometry[]) => mergeGeometries(parts);
 
+/** Snap every vertex above `threshold` to height `y`: a flat top to land on. */
+function flattenAbove(
+	g: THREE.BufferGeometry,
+	threshold: number,
+	y: number,
+): THREE.BufferGeometry {
+	const pos = g.getAttribute("position") as THREE.BufferAttribute;
+	for (let i = 0; i < pos.count; i++)
+		if (pos.getY(i) > threshold) pos.setY(i, y);
+	return g;
+}
+
 function coneTree(
 	kind: "pine" | "tallPine",
 	greens: number[],
@@ -190,10 +202,10 @@ function skyRock(): THREE.BufferGeometry {
 	spike.translate(0, k.spikeTop - k.spikeLen / 2, 0);
 	return merge([
 		part(
-			crumple(
-				new THREE.CylinderGeometry(0.95, 0.85, 0.25, 7),
-				"cap",
-				0.12,
+			flattenAbove(
+				crumple(new THREE.CylinderGeometry(0.95, 0.85, 0.25, 7), "cap", 0.12),
+				0.08,
+				0.125, // flat top for the helipad
 			).translate(0, 0.55, 0),
 			GREENS[2],
 		),
@@ -222,6 +234,7 @@ function floater(): THREE.BufferGeometry {
 		0.04,
 		0.09,
 	);
+	flattenAbove(g, -0.03, 0); // a flat top: room for a runway, and fair landings
 	part(g, SKY_ROCK);
 	// Grass on the top faces.
 	const pos = g.getAttribute("position");

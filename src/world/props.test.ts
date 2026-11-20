@@ -98,4 +98,17 @@ describe("world features", () => {
 			expect(features.solidAt(v.x, v.top - v.length / 2, v.z)).toBe(true);
 		}
 	});
+
+	it("runways on floating mountains are clear to land on", () => {
+		const runways = around.pads.filter((p) => p.kind === "runway");
+		expect(runways.length).toBeGreaterThan(0);
+		for (const r of runways) {
+			for (let d = -r.length / 2; d <= r.length / 2; d += 4) {
+				const x = r.x + Math.sin(r.yaw) * d;
+				const z = r.z + Math.cos(r.yaw) * d;
+				expect(features.solidAt(x, r.y + 3, z)).toBe(false); // no trees on the strip
+			}
+			expect(features.padAt(r.x, r.y + 1, r.z, 3)).toEqual(r);
+		}
+	});
 });

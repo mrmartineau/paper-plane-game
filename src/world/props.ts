@@ -187,6 +187,9 @@ export interface HoopCell {
 }
 /** A flat grassy top you can land on. */
 export interface Pad {
+	kind: "runway" | "helipad"; // runways on floating mountains, helipads on small islands
+	yaw: number; // runway direction (local Z)
+	length: number; // runway length, metres (0 for helipads)
 	x: number;
 	y: number; // surface height
 	z: number;
@@ -426,7 +429,15 @@ export function createFeatures(
 			const bottom = y + (sk.spikeTop - sk.spikeLen) * s;
 			if (bottom < ground(x, z) + 15 || inLane(x, z)) continue;
 			out.rocks.push({ x, y, z, s, yaw, tint });
-			out.pads.push({ x, y: y + sk.capTop * s, z, r: sk.capRadius * s });
+			out.pads.push({
+				kind: "helipad",
+				yaw,
+				length: 0,
+				x,
+				y: y + sk.capTop * s,
+				z,
+				r: sk.capRadius * s,
+			});
 			out.colliders.push(
 				// The rock ball stays under the grassy cap, so you can land on it.
 				{
@@ -524,7 +535,16 @@ export function createFeatures(
 			}
 			if (blocked) continue;
 			out.floaters.push({ x, y, z, R, H, yaw, tint });
-			out.pads.push({ x, y, z, r: R * 0.9 });
+			const runway = R * 1.6; // across the top, along the mountain's yaw
+			out.pads.push({
+				kind: "runway",
+				yaw,
+				length: runway,
+				x,
+				y,
+				z,
+				r: R * 0.9,
+			});
 			// The body tapers to a point: a hanging cone from the top edge to the tip.
 			out.colliders.push({
 				type: "spike",
@@ -549,6 +569,10 @@ export function createFeatures(
 					yaw: rand() * Math.PI * 2,
 					tint: lerp(0.85, 1.1, rand()),
 				};
+				// Keep the runway clear: no trees within its half-width (+ a margin) of the centre line.
+				const across =
+					Math.cos(yaw) * (tree.x - x) - Math.sin(yaw) * (tree.z - z);
+				if (Math.abs(across) < p.runwayWidth / 2 + 6) continue;
 				out.trees.push(tree);
 				out.colliders.push(treeCollider(tree));
 			}

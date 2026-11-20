@@ -4,7 +4,12 @@ import { config } from "../config";
 import { rngFor } from "../core/rng";
 import { buildChunk, type ChunkArrays } from "../world/chunk";
 import type { ClimateFn, HeightFn } from "../world/height";
-import { type Features, SHAPES, type Waterfall } from "../world/props";
+import {
+	type Features,
+	type Pad,
+	SHAPES,
+	type Waterfall,
+} from "../world/props";
 import { createChunkWorkers } from "./chunkWorkers";
 import { addBarycentric, createPaperMaterial } from "./paperMaterial";
 import { createStreamer, type StreamLayer } from "./streamer";
@@ -39,6 +44,7 @@ export function createWorldMeshes(
 		side: THREE.DoubleSide,
 	});
 	const waterfall = createWaterfallMaterial();
+	const padMaterials = createPadMaterials();
 	const lanternMaterial = new THREE.MeshLambertMaterial({
 		vertexColors: true,
 		emissive: 0xff9a3c,
@@ -202,7 +208,7 @@ export function createWorldMeshes(
 			},
 			build(cx, cz) {
 				const c = features.skyCell(cx, cz);
-				return mesh(
+				const rocks = mesh(
 					bake(
 						c.rocks.map((k) => ({
 							geo: t.skyRock,
@@ -216,6 +222,17 @@ export function createWorldMeshes(
 					),
 					propMaterial,
 				);
+				if (c.rocks.length === 0) return rocks;
+				const group = new THREE.Group();
+				if (rocks) group.add(rocks);
+				for (const o of padMeshes(
+					c.pads,
+					padMaterials,
+					t.lantern,
+					lanternMaterial,
+				))
+					group.add(o);
+				return group;
 			},
 		},
 		{
@@ -259,6 +276,13 @@ export function createWorldMeshes(
 				);
 				const falls = waterfallMesh(c.waterfalls, waterfall.material);
 				for (const o of [bodies, trees, falls]) if (o) group.add(o);
+				for (const o of padMeshes(
+					c.pads,
+					padMaterials,
+					t.lantern,
+					lanternMaterial,
+				))
+					group.add(o);
 				return group;
 			},
 		},
@@ -358,4 +382,117 @@ function waterfallMesh(
 	const merged = mergeGeometries(geos);
 	for (const g of geos) g.dispose();
 	return new THREE.Mesh(merged, material);
+}
+
+// --- Landing pads: paper runways on floating mountains, helipads on small islands ---
+
+const INK = "#3d4a50";
+const CARD = "#f2ece0";
+
+function createPadMaterials() {
+	const runway = canvasTexture(128, 1024, (ctx) => {
+		ctx.fillStyle = CARD;
+		ctx.fillRect(0, 0, 128, 1024);
+		ctx.fillStyle = INK;
+		ctx.fillRect(4, 0, 4, 1024); // edge lines
+		ctx.fillRect(120, 0, 4, 1024);
+		for (let y = 150; y < 874; y += 70) ctx.fillRect(60, y, 8, 40); // centre dashes
+		for (const end of [0, 1]) {
+			// threshold bars and an arrow pointing in
+			const y0 = end ? 1024 - 70 : 20;
+			for (let x = 16; x < 112; x += 16) ctx.fillRect(x, y0, 9, 50);
+			ctx.beginPath();
+			const tip = end ? 860 : 164;
+			const base = end ? 900 : 124;
+			ctx.moveTo(64, tip);
+			ctx.lineTo(40, base);
+			ctx.lineTo(88, base);
+			ctx.fill();
+		}
+	});
+	runway.colorSpace = THREE.SRGBColorSpace;
+	runway.anisotropy = 4;
+	const helipad = canvasTexture(256, 256, (ctx) => {
+		ctx.fillStyle = CARD;
+		ctx.beginPath();
+		ctx.arc(128, 128, 126, 0, Math.PI * 2);
+		ctx.fill();
+		ctx.strokeStyle = "#e8745a";
+		ctx.lineWidth = 12;
+		ctx.beginPath();
+		ctx.arc(128, 128, 112, 0, Math.PI * 2);
+		ctx.stroke();
+		ctx.fillStyle = INK;
+		ctx.fillRect(84, 70, 22, 116); // H
+		ctx.fillRect(150, 70, 22, 116);
+		ctx.fillRect(84, 117, 88, 22);
+	});
+	helipad.colorSpace = THREE.SRGBColorSpace;
+	const mat = (map: THREE.Texture) =>
+		new THREE.MeshLambertMaterial({
+			map,
+			transparent: true,
+			alphaTest: 0.5,
+			polygonOffset: true,
+			polygonOffsetFactor: -2,
+		});
+	return { runway: mat(runway), helipad: mat(helipad) };
+}
+
+/** Markings + edge lights for the pads in one cell. Lights use the lantern material, so they glow at night. */
+function padMeshes(
+	pads: Pad[],
+	materials: ReturnType<typeof createPadMaterials>,
+	lantern: THREE.BufferGeometry,
+	lanternMaterial: THREE.Material,
+): THREE.Object3D[] {
+	const out: THREE.Object3D[] = [];
+	const lights: Placement[] = [];
+	const width = config.props.runwayWidth;
+	for (const pad of pads) {
+		const runway = pad.kind === "runway";
+		const geo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+		const m = new THREE.Mesh(
+			geo,
+			runway ? materials.runway : materials.helipad,
+		);
+		m.position.set(pad.x, pad.y + 0.06, pad.z);
+		m.rotation.y = pad.yaw;
+		if (runway) m.scale.set(width, 1, pad.length);
+		else m.scale.set(pad.r * 1.7, 1, pad.r * 1.7);
+		m.receiveShadow = true;
+		out.push(m);
+		const c = Math.cos(pad.yaw);
+		const s = Math.sin(pad.yaw);
+		if (runway) {
+			for (let d = -pad.length / 2; d <= pad.length / 2; d += 12) {
+				for (const side of [-1, 1]) {
+					const lx = side * (width / 2 + 0.8);
+					// local (lx, d) → world, rotating by yaw like the mesh
+					lights.push({
+						geo: lantern,
+						x: pad.x + c * lx + s * d,
+						y: pad.y + 0.3,
+						z: pad.z - s * lx + c * d,
+						yaw: pad.yaw,
+						sx: 0.7,
+					});
+				}
+			}
+		} else {
+			for (let a = 0; a < Math.PI * 2; a += Math.PI / 4) {
+				lights.push({
+					geo: lantern,
+					x: pad.x + Math.cos(a) * pad.r * 0.9,
+					y: pad.y + 0.3,
+					z: pad.z + Math.sin(a) * pad.r * 0.9,
+					yaw: 0,
+					sx: 0.6,
+				});
+			}
+		}
+	}
+	const lit = bake(lights);
+	if (lit) out.push(new THREE.Mesh(lit, lanternMaterial));
+	return out;
 }

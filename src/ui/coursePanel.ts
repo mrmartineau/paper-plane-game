@@ -20,12 +20,13 @@ export function createCoursePanel() {
 			message = text;
 			messageUntil = time + 4;
 		},
-		/** `pointer`: arrow and distance to the next ring, e.g. "↖ 120 m". */
+		/** `pointer`: arrow and distance to the next ring, e.g. "↖ 120 m"; `padPointer`: the same for the nearest landing pad. */
 		update(
 			run: RunView | null,
 			nearGate: Best | null | undefined,
 			time: number,
 			pointer = "",
+			padPointer = "",
 		) {
 			if (time < messageUntil) return set(message);
 			if (run) {
@@ -44,6 +45,7 @@ export function createCoursePanel() {
 						: "Start gate · fly through to start",
 				);
 			}
+			if (padPointer) return set(`Landing pad ${padPointer}`);
 			set("");
 		},
 	};

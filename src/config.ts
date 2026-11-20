@@ -108,6 +108,8 @@ export const config = {
 		waterfallsMax: 2, // per floating mountain
 		vinesMin: 6, // per big floating mountain
 		vinesMax: 16,
+		runwayWidth: 14, // metres, on floating mountain tops
+		padPointerRange: 1500, // metres; the HUD points to the nearest landing pad within this
 		vineSway: 0.012, // rad (visual only, keep small: the collider doesn't sway)
 		hoopBob: 0.6, // metres floating hoops bob up and down (visual only)
 		ringChance: 0.35,

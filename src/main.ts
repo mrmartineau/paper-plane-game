@@ -52,7 +52,7 @@ import { blend } from "./world/biomes";
 import { createBirdField } from "./world/birds";
 import { type Cloud, createCloudField } from "./world/clouds";
 import { createClimate, createHeight } from "./world/height";
-import { createFeatures, type Hoop, type Vine } from "./world/props";
+import { createFeatures, type Hoop, type Pad, type Vine } from "./world/props";
 import { createAir } from "./world/thermals";
 import { createWind } from "./world/wind";
 
@@ -244,13 +244,34 @@ let parked: Parked | null = null; // landed on a floating island
 // Animated things near the player, refreshed twice a second.
 let nearbyHoops: Hoop[] = [];
 let nearbyVines: Vine[] = [];
+let nearbyPads: Pad[] = [];
 let lastGather = -Infinity;
 const hoopPasses = new Map<string, number>(); // hoop id → time you last flew through
+
+/** Arrow + distance to the nearest landing pad (not while parked or far away). */
+function padPointer(): string {
+	if (parked) return "";
+	const { x, z } = state.position;
+	let best: Pad | null = null;
+	let bestD = config.props.padPointerRange;
+	for (const p of nearbyPads) {
+		const d = Math.hypot(p.x - x, p.z - z);
+		if (d < bestD) {
+			bestD = d;
+			best = p;
+		}
+	}
+	if (!best) return "";
+	const f = new THREE.Vector3(0, 0, -1).applyQuaternion(plane.mesh.quaternion);
+	const bearing = (THREE.MathUtils.radToDeg(Math.atan2(f.x, -f.z)) + 360) % 360;
+	return pointTo(x, z, bearing, best.x, best.z);
+}
 
 function gather(x: number, z: number) {
 	const n = features.near(x, z, config.props.featureRange);
 	nearbyHoops = n.hoops;
 	nearbyVines = n.vines;
+	nearbyPads = n.pads;
 	nearbyClouds = cloudField.near(x, z, wind.driftTo(time));
 	nearbyCourses = courseGen.near(x, z, config.courses.range);
 	const gate = nearbyCourses.find(
@@ -522,6 +543,7 @@ function render(alpha: number, frameDt: number) {
 		run.active ? undefined : nearGate,
 		time,
 		nextRing ? pointTo(pos.x, pos.z, bearing, nextRing.x, nextRing.z) : "",
+		padPointer(),
 	);
 	sky.update(camera, light.horizon, light.zenith, light.night);
 	renderer.render(scene, camera);

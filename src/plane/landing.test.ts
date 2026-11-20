@@ -6,7 +6,15 @@ import { axes, createFlightState, fromEuler } from "./flight";
 import { land, slide, takeOff, touchdownOk } from "./landing";
 
 const c = config.flight;
-const pad: Pad = { x: 0, y: 300, z: 0, r: 40 };
+const pad: Pad = {
+	kind: "runway",
+	yaw: 0,
+	length: 70,
+	x: 0,
+	y: 300,
+	z: 0,
+	r: 40,
+};
 const coming = (pitch: number, roll: number, sink: number) => ({
 	...createFlightState({ x: 0, y: 300.2, z: 0 }, 0, 16),
 	orientation: fromEuler(0, pitch, roll),
