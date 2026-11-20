@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { createSound } from "./audio/sound";
 import { createBench } from "./bench";
 import { createChaseCam } from "./camera/chaseCam";
 import { config } from "./config";
@@ -13,6 +14,7 @@ import { type Best, createRun } from "./courses/run";
 import { createDevJumps, createDevPanel, type Telemetry } from "./debug";
 import { createCrash, respawnAt } from "./plane/crash";
 import {
+	axes,
 	type FlightEnv,
 	type FlightState,
 	heading,
@@ -179,6 +181,8 @@ const coursePanel = createCoursePanel();
 let nearbyCourses: Course[] = [];
 let nearGate: Best | null | undefined; // best on the start gate you're near (undefined = none near)
 const bench = params.has("bench") ? createBench() : null;
+const sound = createSound();
+let lastBank = 0;
 
 let state: FlightState = respawnAt(0, 0, 0, groundAt, env.solidAt);
 let prev: FlightState = state;
@@ -239,9 +243,19 @@ function update(dt: number) {
 	if (res.crashed) {
 		crash.start(state);
 		tracker.crash();
+		sound.crumple();
 		return; // freeze where we hit; the plane scrunches into a ball there
 	}
 	state = res.state;
+
+	// Paper rustles when the wings snap round quickly.
+	const ax = axes(state.orientation);
+	const bank = Math.atan2(-ax.right.y, ax.up.y);
+	let dBank = bank - lastBank;
+	if (dBank > Math.PI) dBank -= Math.PI * 2;
+	if (dBank < -Math.PI) dBank += Math.PI * 2;
+	lastBank = bank;
+	if (Math.abs(dBank) / dt > config.audio.rustleTurnRate) sound.rustle();
 
 	const p = state.position;
 	telemetry.airspeed = state.airspeed;
@@ -271,12 +285,16 @@ function update(dt: number) {
 			}
 		}
 		if (e === "abandon") coursePanel.flash("Course dropped", time);
+		if (e === "ring") sound.chime(1);
+		if (e === "start") sound.chime(0.75);
+		if (e === "finish") sound.finish();
 	}
 
 	for (const h of nearbyHoops) {
 		if (passedThrough(h, prev.position, state.position)) {
 			tracker.stats.hoops++;
 			hoopPasses.set(h.id, time);
+			sound.chime(1.5);
 		}
 	}
 }
@@ -416,6 +434,7 @@ function render(alpha: number, frameDt: number) {
 		time,
 	);
 	water.update(pos.x, pos.z, time);
+	sound.update(flying && !paused ? state.airspeed : 0);
 	clouds.update(nearbyClouds, wind.driftTo(time));
 	const runView = run.view();
 	courseMeshes.update(

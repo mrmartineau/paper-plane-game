@@ -229,6 +229,17 @@ export const config = {
 		baseOffset: 18,
 	},
 
+	// Sound (all synthesised)
+	audio: {
+		windMin: 0.015, // wind gain when still
+		windMax: 0.35, // extra wind gain at windFullSpeed
+		windFullSpeed: 45, // m/s
+		windCutoffMin: 250, // Hz
+		windCutoffPerMs: 70, // Hz per m/s of airspeed
+		rustleGap: 0.35, // seconds between rustles
+		rustleTurnRate: 1.6, // rad/s of bank change that rustles the paper
+	},
+
 	// Day/night: time of day runs 0..1 (0 = midnight, 0.5 = noon). Keys are blended in between.
 	dayNight: {
 		dayLength: 900, // seconds for a full day

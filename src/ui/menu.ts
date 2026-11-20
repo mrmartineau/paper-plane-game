@@ -27,6 +27,18 @@ export function createMenu(hooks: MenuHooks) {
 	const invert = $<HTMLInputElement>("[name=invert]");
 	const sensitivity = $<HTMLInputElement>("[name=sensitivity]");
 	const timeOfDay = $<HTMLSelectElement>("[name=time]");
+	const audio = $<HTMLInputElement>("[name=audio]");
+	const volume = $<HTMLInputElement>("[name=volume]");
+	audio.checked = settings.audio;
+	volume.value = String(settings.volume);
+	audio.addEventListener("change", () => {
+		settings.audio = audio.checked;
+		saveSettings();
+	});
+	volume.addEventListener("input", () => {
+		settings.volume = Number(volume.value);
+		saveSettings();
+	});
 	const tierLabel = $<HTMLElement>("[data-tier]");
 	const seedInput = $<HTMLInputElement>("[name=seed]");
 	const copied = $<HTMLElement>("[data-copied]");
