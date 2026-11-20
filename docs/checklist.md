@@ -24,7 +24,7 @@ Tracks [paper-plane-game-plan.md](./paper-plane-game-plan.md). Tick items as the
 - [x] Menu → Boost: unlimited boost, tank length (3–15 s), camera shake on/off (`applySettings` in `src/core/settings.ts`)
 - [x] Mouse input (pointer lock, relative stick that re-centres, left button = boost)
 - [x] Crash → plane scrunches into a paper ball that rolls downhill → respawn nearby → fold open (`src/plane/crash.ts`)
-- [x] Controls card: keyboard button bottom-left (native popover), opens on start, `?` / `H` toggles (`src/ui/help.ts`)
+- [x] Controls card: short (5 lines), keyboard button bottom-left, opens on start, `?` / `H` toggles; the full guide is under "How to play" in the pause menu (`src/ui/help.ts`)
 - [x] lil-gui dev panel behind `?debug`, with live telemetry, "go to updraft" and "go to arch" (`src/debug.ts`)
 - [x] Cockpit HUD, `U` toggles: artificial horizon + pitch ladder, roll scale, speed and height tapes, climb bar (warm in lift, blue in sink), STALL / BOOST warnings, compass tape; stats card: flight time, distance, time in lift, loops, hoops, best height, top speed, crashes, wind (`src/ui/hud.ts`, `src/ui/stats.ts`)
 - [x] Unit tests: steady glide, stall recovery, dive/climb, bank + auto-level, full loop, rising/sinking air, crash; height, air and prop determinism; prop collision and arch lanes; loop counter

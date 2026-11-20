@@ -153,6 +153,12 @@
         background: #fff; color: var(--ink); border: 1px solid var(--paper-edge); border-bottom-width: 2px; border-radius: 5px;
       }
       #menu button.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); width: 100%; }
+      #menu .guide { margin: 14px 0 0; }
+      #menu .guide summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
+      #menu .guide dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 8px 0; align-items: center; }
+      #menu .guide dd { margin: 0; }
+      #menu .guide p { margin: 6px 0 0; }
+      #menu { max-height: calc(100vh - 32px); overflow-y: auto; }
       #menu .note { color: var(--ink-soft); font-size: 12px; }
 
       /* Cockpit HUD: horizon, pitch ladder, speed and height tapes */
@@ -202,6 +208,27 @@
     <dialog id="menu" aria-labelledby="menu-title">
       <h2 id="menu-title">Paused</h2>
       <button class="primary" type="button" data-action="resume">Resume</button>
+
+      <details class="guide">
+        <summary>How to play</summary>
+        <dl>
+          <dt><kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd></dt><dd>Same as W S A D</dd>
+          <dt><kbd>S</kbd> held</dt><dd>Loop</dd>
+          <dt><kbd>Space</kbd></dt><dd>Boost: a rocket. Gravity off, fly anywhere</dd>
+          <dt><kbd>? H</kbd></dt><dd>Controls card</dd>
+          <dt><kbd>U</kbd></dt><dd>Show / hide flight info</dd>
+          <dt><kbd>O</kbd></dt><dd>Photo mode</dd>
+          <dt>Mouse</dt><dd>Click to steer, left button boosts, Esc lets go</dd>
+        </dl>
+      <p><span class="swatch" style="background: var(--warm)"></span>Warm confetti rises: fly in to climb.</p>
+      <p><span class="swatch" style="background: var(--cool)"></span>Blue confetti sinks: it pushes you down.</p>
+      <p>You get a random plane each time: Dart, Glider, Arrow or Stunt. Pick one in the pause menu.</p>
+      <p>Cities have skyscrapers with streets to fly down, skybridges, and a gate at the edge you can fly through. Windows glow at night.</p>
+      <p>Land on a runway (floating mountains) or an H pad (small islands): fly near one, a little above it, and let go. It pulls you in. Hold boost to pull away. The top panel points to the nearest pad. Landing refuels your boost; Space takes off.</p>
+      <p>Wind pushes you along. Where it blows up a hill, it lifts you (ridge lift).</p>
+      <p>Find a red start gate with a striped ribbon and fly through it to start a course. Rings turn green as you pass them. Your best run comes back as a ghost.</p>
+      <p>Fly through the paper hoops (they turn gold) and the sandstone arches. Dodge the trees, rocks, floating islands and paper birds.</p>
+      </details>
 
       <h3>Settings</h3>
       <label>Quality
@@ -298,34 +325,14 @@
     </div>
 
     <div id="help" popover>
-      <h2>How to fly</h2>
-      <h3>Keyboard</h3>
+      <h2>Controls</h2>
       <dl>
-        <dt><kbd>W</kbd> <kbd>↑</kbd></dt><dd>Nose down</dd>
-        <dt><kbd>S</kbd> <kbd>↓</kbd></dt><dd>Nose up (hold to loop)</dd>
-        <dt><kbd>A</kbd> <kbd>D</kbd> <kbd>←</kbd> <kbd>→</kbd></dt><dd>Bank left / right</dd>
-        <dt><kbd>Space</kbd></dt><dd>Boost: a rocket. Gravity off, fly anywhere, even straight up</dd>
-        <dt><kbd>?</kbd> <kbd>H</kbd></dt><dd>Show / hide this card</dd>
-        <dt><kbd>U</kbd></dt><dd>Show / hide the flight info</dd>
-        <dt><kbd>Esc</kbd> <kbd>P</kbd></dt><dd>Pause and settings</dd>
-        <dt><kbd>O</kbd></dt><dd>Photo mode</dd>
-      </dl>
-      <h3>Mouse</h3>
-      <dl>
+        <dt><kbd>W</kbd> <kbd>S</kbd></dt><dd>Nose down / up</dd>
+        <dt><kbd>A</kbd> <kbd>D</kbd></dt><dd>Bank left / right</dd>
+        <dt><kbd>Space</kbd></dt><dd>Boost</dd>
         <dt>Click</dt><dd>Steer with the mouse</dd>
-        <dt>Move</dt><dd>Pitch and bank</dd>
-        <dt>Hold left button</dt><dd>Boost</dd>
-        <dt><kbd>Esc</kbd></dt><dd>Let go of the mouse</dd>
+        <dt><kbd>Esc</kbd></dt><dd>Pause, settings, help</dd>
       </dl>
-      <h3>Air</h3>
-      <p><span class="swatch" style="background: var(--warm)"></span>Warm confetti rises: fly in to climb.</p>
-      <p><span class="swatch" style="background: var(--cool)"></span>Blue confetti sinks: it pushes you down.</p>
-      <p>You get a random plane each time: Dart, Glider, Arrow or Stunt. Pick one in the pause menu.</p>
-      <p>Cities have skyscrapers with streets to fly down, skybridges, and a gate at the edge you can fly through. Windows glow at night.</p>
-      <p>Land on a runway (floating mountains) or an H pad (small islands): fly near one, a little above it, and let go. It pulls you in. Hold boost to pull away. The top panel points to the nearest pad. Landing refuels your boost; Space takes off.</p>
-      <p>Wind pushes you along. Where it blows up a hill, it lifts you (ridge lift).</p>
-      <p>Find a red start gate with a striped ribbon and fly through it to start a course. Rings turn green as you pass them. Your best run comes back as a ghost.</p>
-      <p>Fly through the paper hoops (they turn gold) and the sandstone arches. Dodge the trees, rocks, floating islands and paper birds.</p>
     </div>
 
     <script type="module" src="/src/main.ts"></script>
