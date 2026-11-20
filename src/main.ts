@@ -55,7 +55,7 @@ const seed = params.get("seed") ?? config.world.seed;
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap; // PCFSoft was removed in r18x; this is its replacement
 document.body.prepend(renderer.domElement);
 
 const r = config.render;

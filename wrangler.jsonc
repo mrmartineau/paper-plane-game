@@ -1,0 +1,15 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "paper-plane",
+	"compatibility_date": "2026-11-20",
+	"compatibility_flags": ["nodejs_compat"],
+	// Static-assets-only site (no Worker entry). @cloudflare/vite-plugin
+	// populates the assets directory from the client build at build time.
+	// SPA fallback returns index.html for unknown paths.
+	"assets": {
+		"not_found_handling": "single-page-application"
+	},
+	"observability": {
+		"enabled": true
+	}
+}

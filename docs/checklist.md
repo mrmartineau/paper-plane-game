@@ -97,5 +97,5 @@ Pulled forward because they were one-liners: sun shadow that follows the plane, 
 - [x] Photo mode (O, or the menu): sim frozen, UI hidden, orbit camera, Save PNG (`src/ui/photoMode.ts`)
 - [x] Seed sharing: `?seed=` in the URL; menu: fly this seed, new world, copy link
 - [x] PWA manifest + icons (192, 512, maskable, SVG) + Apple touch icon, full-screen display. No offline service worker yet
-- [ ] `?bench` scripted flight with frame-time stats
-- [ ] Deploy to Cloudflare Pages
+- [x] `?bench` scripted flight with frame-time stats
+- [x] Cloudflare deploy set up (Workers static assets via `@cloudflare/vite-plugin` + `wrangler.jsonc`, GitHub Actions deploy + safe-chain security workflows; `wrangler deploy --dry-run` passes). Not deployed: needs repo secrets and a push (you)

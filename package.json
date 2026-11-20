@@ -3,11 +3,13 @@
 	"version": "0.0.0",
 	"devDependencies": {
 		"@biomejs/biome": "^2.6.8",
+		"@cloudflare/vite-plugin": "^1.70.1",
 		"@types/node": "^24.19.2",
 		"@types/three": "^0.187.0",
 		"typescript": "~7.0.2",
 		"vite": "^8.3.6",
-		"vitest": "^5.1.1"
+		"vitest": "^5.1.1",
+		"wrangler": "^4.165.0"
 	},
 	"private": true,
 	"scripts": {
@@ -16,7 +18,9 @@
 		"lint": "biome check",
 		"preview": "vite preview",
 		"format": "biome check --write",
-		"test": "vitest run"
+		"test": "vitest run",
+		"deploy": "pnpm build && wrangler deploy",
+		"cf-typegen": "wrangler types"
 	},
 	"type": "module",
 	"dependencies": {
@@ -24,5 +28,6 @@
 		"lil-gui": "^0.21.0",
 		"simplex-noise": "^4.0.3",
 		"three": "^0.187.0"
-	}
+	},
+	"packageManager": "pnpm@12.18.0"
 }
