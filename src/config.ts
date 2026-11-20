@@ -229,6 +229,49 @@ export const config = {
 		baseOffset: 18,
 	},
 
+	// Quality tiers: picked from the device (or the pause menu), stepped down if frames are slow.
+	quality: {
+		tiers: {
+			low: {
+				chunkRadius: 5,
+				fogNear: 260,
+				fogFar: 600,
+				propRange: 380,
+				featureRange: 700,
+				shadowMapSize: 1024,
+				maxPixelRatio: 1,
+				cloudChance: 0.35,
+				treeTries: 2, // prop density (applies to newly generated areas)
+			},
+			medium: {
+				chunkRadius: 7,
+				fogNear: 360,
+				fogFar: 860,
+				propRange: 560,
+				featureRange: 950,
+				shadowMapSize: 1024,
+				maxPixelRatio: 1.5,
+				cloudChance: 0.5,
+				treeTries: 3,
+			},
+			high: {
+				chunkRadius: 8,
+				fogNear: 420,
+				fogFar: 1000,
+				propRange: 700,
+				featureRange: 1100,
+				shadowMapSize: 2048,
+				maxPixelRatio: 2,
+				cloudChance: 0.65,
+				treeTries: 3,
+			},
+		},
+		slowFrameMs: 20, // p90 above this ...
+		slowFor: 3, // ... for this many seconds steps quality down
+		warmup: 6, // seconds after start or a jump before judging
+		minPixelRatio: 0.75,
+	},
+
 	// ?bench autopilot (Phase 2 check: long straight flight, no hitches, flat memory)
 	bench: {
 		minutes: 10,
@@ -264,7 +307,9 @@ export const config = {
 	input: {
 		mouseSensitivity: 0.004, // stick units per pixel
 		mouseRecenter: 1.5, // 1/s stick returns to centre
-		invertPitch: false,
+		invertPitch: false, // dev override; players use the pause-menu setting
+		tiltRange: 25, // degrees of tilt for full stick
+		gamepadDeadzone: 0.12,
 	},
 
 	render: {

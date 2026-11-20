@@ -81,14 +81,14 @@ Pulled forward because they were one-liners: sun shadow that follows the plane, 
 
 ## Phase 5: mobile
 
-- [ ] Touch virtual stick
-- [ ] Tilt input, iOS permission, neutral calibration, stick fallback
-- [ ] Gamepad left stick
-- [ ] Quality tiers (low / medium / high) + startup benchmark
-- [ ] Adaptive resolution (p90 > 20ms for 3s)
+- [x] Touch virtual stick (thumb down anywhere on the left two-thirds) + boost button (`src/core/input/touch.ts`)
+- [x] Tilt input, iOS permission on first tap, neutral = how you hold it ("Set tilt level" in the menu), stick fallback (`src/core/input/tilt.ts`) — landscape axis signs untested on a real phone
+- [x] Gamepad: left stick, A / right trigger boost, Start pauses (`src/core/input/gamepad.ts`)
+- [x] Quality tiers (low / medium / high) from the device; set view distance, fog, shadows, pixel ratio, clouds, prop density (`src/render/quality.ts`)
+- [x] Adaptive (auto quality): p90 > 20 ms for 3 s steps the pixel ratio down, then the tier (stands in for a separate startup benchmark)
 - [x] Chunk generation in a Web Worker (done early, in Phase 2: it was needed)
-- [ ] Pause menu + settings (quality, controls, invert, sensitivity, audio)
-- [ ] **Done when:** 60fps recent iPhone (medium), 30fps+ mid Android (low), both control schemes feel good
+- [x] Pause menu (button, Esc, P, gamepad Start, mouse release): quality, controls, invert, sensitivity, tilt level, seed (fly / new / copy link); saved in localStorage (`src/ui/menu.ts`, `src/core/settings.ts`). Audio settings come with audio in Phase 6
+- [ ] **Done when:** 60fps recent iPhone (medium), 30fps+ mid Android (low), both control schemes feel good — needs a real-device check (you)
 
 ## Phase 6: polish
 

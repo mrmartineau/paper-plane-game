@@ -6,6 +6,7 @@ export function setupHelp() {
 	help.showPopover();
 
 	addEventListener("keydown", (e) => {
+		if ((e.target as HTMLElement).closest?.("input, select, textarea")) return; // typing, not a shortcut
 		if (e.key === "?" || e.code === "KeyH") {
 			help.togglePopover();
 			return;

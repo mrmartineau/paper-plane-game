@@ -64,6 +64,7 @@ export function createHud(stats: Stats) {
 
 	let lastText = -Infinity;
 	addEventListener("keydown", (e) => {
+		if ((e.target as HTMLElement).closest?.("input, select, textarea")) return; // typing, not a shortcut
 		if (e.code === "KeyU") root.hidden = !root.hidden;
 	});
 

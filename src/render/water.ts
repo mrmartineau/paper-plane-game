@@ -12,7 +12,7 @@ const SHEETS = [
 ];
 
 export function createWater(scene: THREE.Scene) {
-	const size = config.render.fogFar * 2.4;
+	const size = config.quality.tiers.high.fogFar * 2.4; // big enough for the furthest fog
 	const time = { value: 0 };
 	const geo = addBarycentric(
 		new THREE.PlaneGeometry(size, size, 64, 64)

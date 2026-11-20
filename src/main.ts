@@ -4,6 +4,7 @@ import { createChaseCam } from "./camera/chaseCam";
 import { config } from "./config";
 import { createInput } from "./core/input";
 import { startLoop } from "./core/loop";
+import { isTouchDevice, settings } from "./core/settings";
 import { storage } from "./core/storage";
 import { type Course, createCourses } from "./courses/generate";
 import { decodeGhost, encodeGhost } from "./courses/ghost";
@@ -25,6 +26,7 @@ import { createBoostTrail } from "./render/boostTrail";
 import { createClouds } from "./render/clouds";
 import { createCourseMeshes } from "./render/courseMeshes";
 import { createHoopMeshes } from "./render/hoopMeshes";
+import { createQuality } from "./render/quality";
 import { createSky } from "./render/sky";
 import { createVineMeshes } from "./render/vines";
 import { createWater } from "./render/water";
@@ -32,6 +34,7 @@ import { createWorldMeshes } from "./render/world";
 import { clock, createCoursePanel, pointTo } from "./ui/coursePanel";
 import { setupHelp } from "./ui/help";
 import { createHud } from "./ui/hud";
+import { createMenu } from "./ui/menu";
 import { createStats } from "./ui/stats";
 import { blend } from "./world/biomes";
 import { createBirdField } from "./world/birds";
@@ -46,7 +49,6 @@ const seed = params.get("seed") ?? config.world.seed;
 
 // --- Renderer, scene, lights ---
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, config.render.maxPixelRatio));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -72,6 +74,10 @@ Object.assign(sun.shadow.camera, {
 });
 sun.shadow.bias = -0.0005;
 scene.add(sun, sun.target);
+
+// Quality tier first: it sets view distance, fog, shadows and prop density for everything below.
+const quality = createQuality(renderer, sun, scene);
+quality.set(settings.quality);
 
 const camera = new THREE.PerspectiveCamera(
 	config.camera.fovMin,
@@ -184,7 +190,10 @@ function place(s: FlightState) {
 	state = s;
 	prev = s;
 	snapped = false;
+	quality.hold(); // the world reloads around the new spot; don't judge those frames
 }
+
+let paused = false;
 
 // Animated things near the player, refreshed twice a second.
 let nearbyHoops: Hoop[] = [];
@@ -208,6 +217,8 @@ function gather(x: number, z: number) {
 
 function update(dt: number) {
 	const i = input.update(dt);
+	if (input.gamepad.start) menu.toggle();
+	if (paused) return;
 	bench?.steer(i, telemetry.altitude, telemetry.climb);
 	prev = state;
 	const fresh = crash.update(dt);
@@ -275,6 +286,7 @@ const shakeEuler = new THREE.Euler();
 function render(alpha: number, frameDt: number) {
 	time += frameDt;
 	bench?.frame(frameDt * 1000);
+	if (!paused) quality.frame(frameDt * 1000);
 	const lerp = (a: number, b: number) => a + (b - a) * alpha;
 	pos.set(
 		lerp(prev.position.x, state.position.x),
@@ -390,6 +402,25 @@ function render(alpha: number, frameDt: number) {
 
 startLoop(update, render);
 setupHelp();
+
+const menu = createMenu({
+	seed,
+	onPause: (p) => {
+		paused = p;
+	},
+	onQuality: (q) => {
+		quality.set(q);
+		return q === "auto" ? `(${quality.tier})` : "";
+	},
+	onControls: (c) => {
+		if (c === "tilt") input.tilt.enable();
+		else if (c !== "auto") input.tilt.disable();
+	},
+	onRecalibrate: () => input.tilt.recalibrate(),
+	onResume: () => {
+		if (!isTouchDevice()) renderer.domElement.requestPointerLock();
+	},
+});
 
 if (params.has("debug")) {
 	createDevPanel(telemetry, {

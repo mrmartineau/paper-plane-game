@@ -65,7 +65,9 @@ export function createWorldMeshes(
 	const layers: StreamLayer[] = [
 		{
 			cellSize: w.chunkSize,
-			range: w.chunkRadius * w.chunkSize,
+			get range() {
+				return w.chunkRadius * w.chunkSize; // live: quality tiers change it
+			},
 			lod: (d) => (d < w.lod1Distance ? 0 : d < w.lod2Distance ? 1 : 2),
 			build: (cx, cz, lod) =>
 				terrainMesh(buildChunk(cx, cz, lod, height, climate, w), lod),
@@ -76,7 +78,9 @@ export function createWorldMeshes(
 		},
 		{
 			cellSize: w.chunkSize,
-			range: p.propRange,
+			get range() {
+				return p.propRange;
+			},
 			build(cx, cz) {
 				const c = features.groundCell(cx, cz);
 				const items: Placement[] = [
@@ -114,7 +118,9 @@ export function createWorldMeshes(
 		},
 		{
 			cellSize: p.archCell,
-			range: p.featureRange,
+			get range() {
+				return p.featureRange;
+			},
 			build(cx, cz) {
 				const a = features.archCell(cx, cz).arch;
 				if (!a) return null;
@@ -136,7 +142,9 @@ export function createWorldMeshes(
 		{
 			// Hoop poles are static; the rings themselves are pooled (they bob and light up).
 			cellSize: p.hoopCell,
-			range: p.featureRange,
+			get range() {
+				return p.featureRange;
+			},
 			build(cx, cz) {
 				const h = features.hoopCell(cx, cz).hoop;
 				if (h?.kind !== "pole") return null;
@@ -160,7 +168,9 @@ export function createWorldMeshes(
 		},
 		{
 			cellSize: p.skyRockCell,
-			range: p.featureRange,
+			get range() {
+				return p.featureRange;
+			},
 			build(cx, cz) {
 				const c = features.skyCell(cx, cz);
 				return mesh(
@@ -181,7 +191,9 @@ export function createWorldMeshes(
 		},
 		{
 			cellSize: p.floaterCell,
-			range: p.featureRange,
+			get range() {
+				return p.featureRange;
+			},
 			build(cx, cz) {
 				const c = features.floaterCell(cx, cz);
 				if (c.floaters.length === 0) return null;
