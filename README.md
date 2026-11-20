@@ -3,11 +3,11 @@
 A calm browser game. Fly an origami plane over a papercraft landscape.
 
 ```sh
-bun install
-bun run dev      # http://localhost:5173
-bun run test     # vitest
-bun run lint     # biome
-bun run build
+pnpm install
+pnpm dev       # http://localhost:5173
+pnpm test      # vitest
+pnpm lint      # biome
+pnpm build
 ```
 
 ## Controls

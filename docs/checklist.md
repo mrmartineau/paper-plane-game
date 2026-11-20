@@ -5,7 +5,7 @@ Tracks [paper-plane-game-plan.md](./paper-plane-game-plan.md). Tick items as the
 ## Phase 1: flight feel
 
 - [x] Vite + TS (strict) + Three scaffold (React template removed)
-- [x] Bun as package manager, Biome for lint/format, Vitest
+- [x] pnpm as package manager, Biome for lint/format, Vitest
 - [x] Game loop: fixed 60Hz + accumulator, interpolated render, delta clamp, pause on `visibilitychange` (`src/core/loop.ts`)
 - [x] Origami plane model, 6 triangles, two-tone paper (`src/plane/model.ts`)
 - [x] Bigger plane, camera closer; camera smooths its offset so speed adds no lag
