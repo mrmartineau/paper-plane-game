@@ -1,6 +1,7 @@
 import {
 	type Controls,
 	type Quality,
+	type Settings,
 	saveSettings,
 	settings,
 	type TimeOfDay,
@@ -16,6 +17,8 @@ export interface MenuHooks {
 	onRecalibrate(): void;
 	onResume(): void; // e.g. re-lock the mouse
 	onPhoto(): void;
+	onPlane(choice: Settings["plane"]): string; // returns the name of the plane now flying
+	planeName(): string;
 	seed: string;
 }
 
@@ -55,6 +58,21 @@ export function createMenu(hooks: MenuHooks) {
 		settings.timeOfDay = timeOfDay.value as TimeOfDay;
 		saveSettings();
 	});
+
+	// Plane
+	const planeSelect = $<HTMLSelectElement>("[name=plane]");
+	const planeLabel = $<HTMLElement>("[data-plane]");
+	planeSelect.value = settings.plane;
+	// On "random", show which plane you got.
+	const showPlane = (name: string) => {
+		planeLabel.textContent = settings.plane === "random" ? `(${name})` : "";
+	};
+	planeSelect.addEventListener("change", () => {
+		settings.plane = planeSelect.value as Settings["plane"];
+		saveSettings();
+		showPlane(hooks.onPlane(settings.plane));
+	});
+	showPlane(hooks.planeName());
 
 	// Boost
 	const unlimited = $<HTMLInputElement>("[name=unlimited]");

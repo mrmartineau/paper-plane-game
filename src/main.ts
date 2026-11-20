@@ -5,7 +5,7 @@ import { createChaseCam } from "./camera/chaseCam";
 import { config } from "./config";
 import { createInput } from "./core/input";
 import { startLoop } from "./core/loop";
-import { isTouchDevice, settings } from "./core/settings";
+import { applySettings, isTouchDevice, settings } from "./core/settings";
 import { storage } from "./core/storage";
 import { type Course, createCourses } from "./courses/generate";
 import { decodeGhost, encodeGhost } from "./courses/ghost";
@@ -29,6 +29,7 @@ import {
 	touchdownOk,
 } from "./plane/landing";
 import { createPlaneModel } from "./plane/model";
+import { PLANES, type PlaneId, randomPlane } from "./plane/types";
 import { createAirColumns } from "./render/airColumns";
 import { createBirdMeshes } from "./render/birdMeshes";
 import { createBoostTrail } from "./render/boostTrail";
@@ -161,7 +162,19 @@ const clouds = createClouds(scene);
 let nearbyClouds: Cloud[] = [];
 
 // --- Plane ---
-const plane = createPlaneModel();
+// Plane type: random each start (unless one is picked in the menu). Each has its own handling.
+const baseFlight = { ...config.flight };
+let planeId: PlaneId =
+	settings.plane === "random" ? randomPlane() : settings.plane;
+const plane = createPlaneModel(planeId);
+function usePlane(id: PlaneId) {
+	planeId = id;
+	Object.assign(config.flight, baseFlight, PLANES[id].flight);
+	applySettings(); // boost tank settings sit on top of the plane's numbers
+	plane.setType(id);
+	courseMeshes.setGhostGeometry(plane.mesh.geometry);
+	tracker.stats.plane = PLANES[id].name;
+}
 scene.add(plane.mesh);
 const input = createInput(renderer.domElement);
 const crash = createCrash(scene, groundAt, env.solidAt);
@@ -185,6 +198,7 @@ const run = createRun(config.courses, {
 	},
 });
 const courseMeshes = createCourseMeshes(scene, plane.mesh.geometry);
+usePlane(planeId);
 const coursePanel = createCoursePanel();
 let nearbyCourses: Course[] = [];
 let nearGate: Best | null | undefined; // best on the start gate you're near (undefined = none near)
@@ -531,6 +545,11 @@ const menu = createMenu({
 	},
 	onRecalibrate: () => input.tilt.recalibrate(),
 	onPhoto: () => photo.enter(),
+	planeName: () => PLANES[planeId].name,
+	onPlane: (choice) => {
+		usePlane(choice === "random" ? randomPlane() : choice);
+		return PLANES[planeId].name;
+	},
 	onResume: () => {
 		if (!isTouchDevice()) renderer.domElement.requestPointerLock();
 	},

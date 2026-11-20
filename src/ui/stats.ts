@@ -11,6 +11,7 @@ export interface Stats {
 	crashes: number;
 	hoops: number; // hoop passes, this session
 	landings: number; // on floating islands, this session
+	plane: string; // name of the plane you're flying
 }
 
 export function createStats() {
@@ -24,6 +25,7 @@ export function createStats() {
 		crashes: 0,
 		hoops: 0,
 		landings: 0,
+		plane: "",
 	};
 	// Loop = nose goes up past vertical, over the top upside down, down the back, and level again.
 	let stage = 0;

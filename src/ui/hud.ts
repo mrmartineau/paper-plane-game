@@ -169,6 +169,7 @@ export function createHud(stats: Stats) {
 		crashes: field("crashes"),
 		hoops: field("hoops"),
 		landings: field("landings"),
+		plane: field("plane"),
 		wind: field("wind"),
 	};
 
@@ -246,6 +247,7 @@ export function createHud(stats: Stats) {
 			set(out.crashes, `${stats.crashes}`);
 			set(out.hoops, `${stats.hoops}`);
 			set(out.landings, `${stats.landings}`);
+			set(out.plane, stats.plane);
 			// Arrow: where the wind blows, relative to where you're heading.
 			const windBearing =
 				(Math.atan2(info.wind.x, -info.wind.z) * 180) / Math.PI;

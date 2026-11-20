@@ -1,4 +1,5 @@
 import { config } from "../config";
+import type { PlaneId } from "../plane/types";
 import { storage } from "./storage";
 
 // Player settings, saved in localStorage. The pause menu edits these.
@@ -18,6 +19,7 @@ export interface Settings {
 	unlimitedBoost: boolean;
 	boostSeconds: number; // a full tank lasts this long (3 .. 15)
 	cameraShake: boolean;
+	plane: PlaneId | "random"; // random = a new one every start
 }
 
 const DEFAULTS: Settings = {
@@ -31,6 +33,7 @@ const DEFAULTS: Settings = {
 	unlimitedBoost: false,
 	boostSeconds: 6,
 	cameraShake: true,
+	plane: "random",
 };
 
 export const settings: Settings = {

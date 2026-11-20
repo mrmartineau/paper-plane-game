@@ -212,6 +212,15 @@
           <option value="high">High</option>
         </select> <span class="note" data-tier></span></span>
       </label>
+      <label>Plane
+        <span><select name="plane">
+          <option value="random">Random each start</option>
+          <option value="dart">Dart · balanced</option>
+          <option value="glider">Glider · floaty</option>
+          <option value="arrow">Arrow · fast</option>
+          <option value="stunt">Stunt · flips</option>
+        </select> <span class="note" data-plane></span></span>
+      </label>
       <label>Controls
         <select name="controls">
           <option value="auto">Auto</option>
@@ -273,6 +282,7 @@
       <svg id="flight-hud" viewBox="0 0 560 340" aria-hidden="true"></svg>
       <section class="flight card" aria-label="Flight stats">
         <dl class="stats">
+          <dt>Plane</dt><dd data-hud="plane"></dd>
           <dt>Flight time</dt><dd data-hud="flightTime">0:00</dd>
           <dt>Distance</dt><dd data-hud="distance">0 m</dd>
           <dt>Time in lift</dt><dd data-hud="liftTime">0:00</dd>
@@ -310,6 +320,7 @@
       <h3>Air</h3>
       <p><span class="swatch" style="background: var(--warm)"></span>Warm confetti rises: fly in to climb.</p>
       <p><span class="swatch" style="background: var(--cool)"></span>Blue confetti sinks: it pushes you down.</p>
+      <p>You get a random plane each time: Dart, Glider, Arrow or Stunt. Pick one in the pause menu.</p>
       <p>Land gently on the grassy top of a floating island (wings level, not diving) to refuel your boost. Space takes off.</p>
       <p>Wind pushes you along. Where it blows up a hill, it lifts you (ridge lift).</p>
       <p>Find a red start gate with a striped ribbon and fly through it to start a course. Rings turn green as you pass them. Your best run comes back as a ghost.</p>

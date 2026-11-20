@@ -109,6 +109,10 @@ export function createCourseMeshes(
 	const up = new THREE.Vector3(0, 1, 0);
 
 	return {
+		/** The ghost uses the current plane's shape. */
+		setGhostGeometry(g: THREE.BufferGeometry) {
+			ghost.geometry = g;
+		},
 		update(
 			courses: Course[],
 			active: Course | null,
