@@ -111,4 +111,40 @@ describe("world features", () => {
 			expect(features.padAt(r.x, r.y + 1, r.z, 3)).toEqual(r);
 		}
 	});
+
+	it("cities have solid towers, and a clear portal down the avenue", () => {
+		const cities = around.cities;
+		expect(cities.length).toBeGreaterThan(0);
+		expect(cities.some((c) => c.gates.length > 0)).toBe(true);
+		for (const city of cities) {
+			const tower = city.buildings.find((b) => b.kind === "tower" && b.h > 30);
+			if (!tower) throw new Error("no tower");
+			expect(features.solidAt(tower.x, tower.base + tower.h / 2, tower.z)).toBe(
+				true,
+			);
+			expect(
+				features.solidAt(tower.x, tower.base + tower.h + 20, tower.z),
+			).toBe(false);
+			for (const g of city.gates) {
+				for (let d = -120; d <= 120; d += 4) {
+					expect(
+						features.solidAt(
+							g.x + Math.sin(g.yaw) * d,
+							g.y,
+							g.z + Math.cos(g.yaw) * d,
+						),
+					).toBe(false);
+				}
+				// Beside the opening is a tower.
+				const side = g.gap / 2 + 12;
+				expect(
+					features.solidAt(
+						g.x + Math.cos(g.yaw) * side,
+						g.y,
+						g.z - Math.sin(g.yaw) * side,
+					),
+				).toBe(true);
+			}
+		}
+	});
 });

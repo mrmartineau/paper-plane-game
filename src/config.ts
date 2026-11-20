@@ -115,6 +115,20 @@ export const config = {
 		waterfallsMax: 2, // per floating mountain
 		vinesMin: 6, // per big floating mountain
 		vinesMax: 16,
+		cityCell: 700, // metres; at most one city per cell
+		cityChance: 0.4,
+		cityRadiusMin: 150,
+		cityRadiusMax: 260,
+		cityFlat: 90, // max height difference across a city site (towers get their own foundations)
+		cityMinHeight: 3, // site must be above the sea by this much
+		cityMaxHeight: 160,
+		cityMargin: 40, // other things keep this far from a city
+		blockSize: 60, // metres between tower centres (streets are ~30 m wide)
+		towerLowMin: 16,
+		towerLowMax: 42,
+		towerTallMax: 170, // extra height in the city core
+		gateGap: 40, // width of the fly-through portal
+		gateClear: 72, // height of the portal opening
 		runwayWidth: 14, // metres, on floating mountain tops
 		padPointerRange: 1500, // metres; the HUD points to the nearest landing pad within this
 		vineSway: 0.012, // rad (visual only, keep small: the collider doesn't sway)

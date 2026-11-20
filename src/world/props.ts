@@ -158,6 +158,15 @@ export interface Hoop {
 
 type Collider = { x: number; z: number; reach: number } & (
 	| {
+			type: "box";
+			c: number;
+			s: number;
+			hw: number;
+			hd: number;
+			y0: number;
+			y1: number;
+	  }
+	| {
 			type: "cone";
 			base: number;
 			y0: number;
@@ -186,6 +195,42 @@ export interface HoopCell {
 	colliders: Collider[];
 }
 /** A flat grassy top you can land on. */
+/** A tower (or a bridge / lintel slab) in a city. */
+export interface Building {
+	x: number;
+	z: number;
+	yaw: number;
+	w: number; // size along local X
+	d: number; // size along local Z
+	base: number;
+	h: number;
+	kind: "tower" | "slab";
+	tint: number;
+}
+
+/** A fly-through portal at the edge of a city: two towers with a lintel. Fly along local Z. */
+export interface Gate {
+	x: number;
+	y: number; // flying height in the middle of the opening
+	z: number;
+	yaw: number;
+	gap: number;
+}
+
+export interface CityCell {
+	buildings: Building[];
+	gates: Gate[];
+	colliders: Collider[];
+}
+
+interface CityInfo {
+	x: number;
+	z: number;
+	r: number;
+	yaw: number;
+	base: number;
+}
+
 export interface Pad {
 	kind: "runway" | "helipad"; // runways on floating mountains, helipads on small islands
 	yaw: number; // runway direction (local Z)
@@ -245,6 +290,192 @@ export function createFeatures(
 		return biomeWeights(c.temperature, c.moisture);
 	};
 
+	// --- Cities: towers on a grid with avenues, a fly-through gate, skybridges ---
+	const cityInfo = memoCells((cx, cz): CityInfo | null => {
+		const rand = rngFor(seed, "city", cx, cz);
+		if (rand() > p.cityChance) return null;
+		const x = (cx + 0.2 + rand() * 0.6) * p.cityCell;
+		const z = (cz + 0.2 + rand() * 0.6) * p.cityCell;
+		const r = lerp(p.cityRadiusMin, p.cityRadiusMax, rand());
+		const yaw = rand() * Math.PI;
+		let lo = height(x, z);
+		let hi = lo;
+		for (let a = 0; a < 8; a++) {
+			const h = height(
+				x + Math.cos((a * Math.PI) / 4) * r * 1.3,
+				z + Math.sin((a * Math.PI) / 4) * r * 1.3,
+			);
+			lo = Math.min(lo, h);
+			hi = Math.max(hi, h);
+		}
+		if (
+			lo < sea + p.cityMinHeight ||
+			hi > p.cityMaxHeight ||
+			hi - lo > p.cityFlat
+		)
+			return null;
+		return { x, z, r, yaw, base: lo - 2 };
+	});
+
+	/** Is (x, z) inside a city's footprint (plus a margin)? Other features keep out. */
+	const inCity = (x: number, z: number, margin: number): boolean => {
+		let hit = false;
+		forCells(
+			x,
+			z,
+			p.cityRadiusMax + p.blockSize * 3 + margin,
+			p.cityCell,
+			(cx, cz) => {
+				if (hit) return;
+				const c = cityInfo(cx, cz);
+				if (
+					c &&
+					(c.x - x) ** 2 + (c.z - z) ** 2 <
+						(c.r + p.blockSize * 2.5 + margin) ** 2
+				)
+					hit = true;
+			},
+		);
+		return hit;
+	};
+
+	const cityCell = memoCells((cx, cz): CityCell => {
+		const out: CityCell = { buildings: [], gates: [], colliders: [] };
+		const info = cityInfo(cx, cz);
+		if (!info) return out;
+		const rand = rngFor(seed, "cityBlocks", cx, cz);
+		const c = Math.cos(info.yaw);
+		const s = Math.sin(info.yaw);
+		const toWorld = (lx: number, lz: number) => ({
+			x: info.x + c * lx + s * lz,
+			z: info.z - s * lx + c * lz,
+		});
+		const add = (
+			lx: number,
+			lz: number,
+			w: number,
+			d: number,
+			y0: number,
+			h: number,
+			kind: Building["kind"],
+			tint: number,
+		) => {
+			const q = toWorld(lx, lz);
+			out.buildings.push({
+				x: q.x,
+				z: q.z,
+				yaw: info.yaw,
+				w,
+				d,
+				base: y0,
+				h,
+				kind,
+				tint,
+			});
+			out.colliders.push({
+				type: "box",
+				x: q.x,
+				z: q.z,
+				c,
+				s,
+				hw: (w / 2) * f,
+				hd: (d / 2) * f,
+				y0,
+				y1: y0 + h,
+				reach: Math.hypot(w, d) / 2,
+			});
+		};
+		const n = Math.floor(info.r / p.blockSize);
+		/** Lowest and highest ground under a footprint (centre and corners). */
+		const span = (lx: number, lz: number, w: number, d: number) => {
+			let lo = Number.POSITIVE_INFINITY;
+			let hi = Number.NEGATIVE_INFINITY;
+			for (const [a, b] of [
+				[0, 0],
+				[-1, -1],
+				[1, -1],
+				[-1, 1],
+				[1, 1],
+			]) {
+				const q = toWorld(lx + (a * w) / 2, lz + (b * d) / 2);
+				const h = height(q.x, q.z);
+				lo = Math.min(lo, h);
+				hi = Math.max(hi, h);
+			}
+			return { lo, hi };
+		};
+		const grid = new Map<
+			string,
+			{ lx: number; lz: number; w: number; h: number; base: number }
+		>();
+		for (let i = -n; i <= n; i++) {
+			for (let j = -n; j <= n; j++) {
+				const lx = (i + 0.5) * p.blockSize; // the avenue runs down lx = 0
+				const lz = j * p.blockSize;
+				const d = Math.hypot(lx, lz) / info.r;
+				const skip = rand() < 0.1; // a plaza
+				const w = lerp(18, 30, rand());
+				const dd = lerp(18, 30, rand());
+				const h =
+					lerp(p.towerLowMin, p.towerLowMax, rand()) +
+					(1 - Math.min(1, d)) ** 1.4 * rand() * p.towerTallMax;
+				const tint = lerp(0.82, 1.05, rand());
+				if (d > 1 || skip) continue;
+				const g = span(lx, lz, w, dd);
+				if (g.lo < sea + 1) continue; // no towers in the water
+				const base = g.lo - 3;
+				add(lx, lz, w, dd, base, h, "tower", tint);
+				grid.set(`${i},${j}`, { lx, lz, w, h, base });
+			}
+		}
+		// Skybridges across the streets between tall neighbours.
+		for (const [key, a] of grid) {
+			const [i, j] = key.split(",").map(Number);
+			const b = grid.get(`${i + 1},${j}`);
+			if (!b || a.h < 80 || b.h < 80 || rand() > 0.35) continue;
+			const faceA = a.lx + a.w / 2;
+			const faceB = b.lx - b.w / 2;
+			add(
+				(faceA + faceB) / 2,
+				a.lz,
+				faceB - faceA + 4,
+				10,
+				Math.min(a.base + 0.62 * a.h, b.base + 0.62 * b.h),
+				4,
+				"slab",
+				1,
+			);
+		}
+		// The gate: two towers and a lintel on the avenue, just outside the city (only on level-ish ground).
+		const gz = -(n + 1) * p.blockSize;
+		const T = 24;
+		const gs = span(0, gz, p.gateGap + 2 * T, T);
+		if (gs.hi - gs.lo <= 30 && gs.lo > sea + 1) {
+			const gb = gs.lo - 3;
+			for (const side of [-1, 1])
+				add(
+					side * (p.gateGap / 2 + T / 2),
+					gz,
+					T,
+					T,
+					gb,
+					p.gateClear + 14 + 22,
+					"tower",
+					0.95,
+				);
+			add(0, gz, p.gateGap + 6, T, gb + p.gateClear, 14, "slab", 1);
+			const gp = toWorld(0, gz);
+			out.gates.push({
+				x: gp.x,
+				y: gb + 36,
+				z: gp.z,
+				yaw: info.yaw,
+				gap: p.gateGap,
+			});
+		}
+		return out;
+	});
+
 	// --- Arches ---
 	const archCell = memoCells((cx, cz): ArchCell => {
 		const rand = rngFor(seed, "arch", cx, cz);
@@ -252,6 +483,7 @@ export function createFeatures(
 		for (let tries = 0; tries < 8; tries++) {
 			const x = (cx + rand()) * p.archCell;
 			const z = (cz + rand()) * p.archCell;
+			if (inCity(x, z, p.cityMargin)) continue;
 			const yaw = rand() * Math.PI;
 			const s = lerp(p.archScaleMin, p.archScaleMax, rand());
 			const ring = rand() < p.ringChance;
@@ -294,6 +526,7 @@ export function createFeatures(
 		for (let tries = 0; tries < 6; tries++) {
 			const x = (cx + rand()) * p.hoopCell;
 			const z = (cz + rand()) * p.hoopCell;
+			if (inCity(x, z, p.cityMargin)) continue;
 			const yaw = rand() * Math.PI * 2;
 			const R = lerp(p.hoopRadiusMin, p.hoopRadiusMax, rand());
 			const pole = rand() < p.poleChance;
@@ -427,7 +660,12 @@ export function createFeatures(
 			const tint = lerp(0.9, 1.1, rand());
 			const nVines = Math.floor(rand() * 4);
 			const bottom = y + (sk.spikeTop - sk.spikeLen) * s;
-			if (bottom < ground(x, z) + 15 || inLane(x, z)) continue;
+			if (
+				bottom < ground(x, z) + 15 ||
+				inLane(x, z) ||
+				inCity(x, z, p.cityMargin)
+			)
+				continue;
 			out.rocks.push({ x, y, z, s, yaw, tint });
 			out.pads.push({
 				kind: "helipad",
@@ -529,7 +767,7 @@ export function createFeatures(
 			const nTrees = Math.floor(R / 5);
 			const nFalls = Math.floor(rand() * (p.waterfallsMax + 1));
 			const nVines = Math.floor(lerp(p.vinesMin, p.vinesMax, rand()) * shrink);
-			let blocked = inLane(x, z);
+			let blocked = inLane(x, z) || inCity(x, z, R + p.cityMargin);
 			for (let a = 0; a < Math.PI * 2 && !blocked; a += Math.PI / 2) {
 				blocked = inLane(x + Math.cos(a) * R, z + Math.sin(a) * R);
 			}
@@ -608,7 +846,8 @@ export function createFeatures(
 		const out: GroundCell = { trees: [], rocks: [], houses: [], colliders: [] };
 		const size = w.chunkSize;
 		const lanes = lanesNear((cx + 0.5) * size, (cz + 0.5) * size, size * 0.75); // once per chunk
-		const blocked = (x: number, z: number) => inLanes(lanes, x, z);
+		const blocked = (x: number, z: number) =>
+			inLanes(lanes, x, z) || inCity(x, z, 8);
 		const sub = Math.round(size / p.cell);
 		for (let i = 0; i < sub; i++) {
 			for (let j = 0; j < sub; j++) {
@@ -774,6 +1013,11 @@ export function createFeatures(
 		{ cell: p.hoopCell, reach: p.hoopRadiusMax + 2, get: hoopCell },
 		{ cell: p.skyRockCell, reach: 60 + p.skyRockMax, get: skyCell },
 		{ cell: p.floaterCell, reach: 180 + p.floaterRadiusMax, get: floaterCell },
+		{
+			cell: p.cityCell,
+			reach: p.cityRadiusMax + p.blockSize * 3,
+			get: cityCell,
+		},
 	];
 
 	/** True if the point is inside a tree, rock, house, arch, hoop rim, pole, island or vine. */
@@ -803,6 +1047,7 @@ export function createFeatures(
 			hoops: [] as Hoop[],
 			skyRocks: [] as SkyRock[],
 			pads: [] as Pad[],
+			cities: [] as CityCell[],
 			floaters: [] as Floater[],
 			vines: [] as Vine[],
 			waterfalls: [] as Waterfall[],
@@ -827,6 +1072,10 @@ export function createFeatures(
 			out.pads.push(...c.pads);
 			out.vines.push(...c.vines);
 			out.waterfalls.push(...c.waterfalls);
+		});
+		forCells(x, z, range, p.cityCell, (cx, cz) => {
+			const c = cityCell(cx, cz);
+			if (c.buildings.length) out.cities.push(c);
 		});
 		return out;
 	}
@@ -860,6 +1109,7 @@ export function createFeatures(
 		hoopCell,
 		skyCell,
 		floaterCell,
+		cityCell,
 		solidAt,
 		padAt,
 		near,
@@ -883,6 +1133,15 @@ function hits(c: Collider, x: number, y: number, z: number): boolean {
 			if (y < c.bottom || y > c.top) return false;
 			const r = (c.r0 * (y - c.bottom)) / (c.top - c.bottom);
 			return d2 < r * r;
+		}
+		case "box": {
+			if (y < c.y0 || y > c.y1) return false;
+			const dx = x - c.x;
+			const dz = z - c.z;
+			return (
+				Math.abs(c.c * dx - c.s * dz) < c.hw &&
+				Math.abs(c.s * dx + c.c * dz) < c.hd
+			);
 		}
 		case "pole":
 			return y >= c.base && y <= c.top && d2 < c.r * c.r;

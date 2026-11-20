@@ -197,6 +197,10 @@ export function createDevJumps(ctx: {
 			);
 			if (c) lineUp(c.x, c.y, c.z, c.yaw, 120);
 		},
+		"go to city gate"() {
+			const g = nearest(around().cities.flatMap((c) => c.gates));
+			if (g) lineUp(g.x, g.y, g.z, g.yaw, 160);
+		},
 		"go to waterfall"() {
 			const w = nearest(around().waterfalls);
 			if (w) lineUp(w.x, w.y - w.length * 0.4, w.z, w.yaw, 120);

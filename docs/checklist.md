@@ -45,6 +45,7 @@ Pulled forward because they were one-liners: sun shadow that follows the plane, 
 - [x] Sky: gradient dome, horizon = fog colour (`src/render/sky.ts`)
 - [x] Instanced props: pines, tall pines (to ~35m), round trees in forest patches; rocks on slopes (`src/world/props.ts`, `src/render/propMeshes.ts`)
 - [x] Sandstone arches and standing rings you can fly through, with a clear lane in front and behind
+- [x] Cities (~every 700 m cell, 40%): grid of paper skyscrapers (to ~200 m, taller in the core), avenues to fly down, skybridges, a fly-through gate (two towers + lintel) at the edge; on hills with per-tower foundations; windows glow at night; other features keep out (`src/world/props.ts` `cityCell`, `src/render/world.ts`)
 - [x] Floating rock islands (grass cap, hanging spike), solid
 - [x] Land on floating islands and mountains: gentle + level touchdown on the grassy top; slide to a stop; boost refills 3× faster; Space takes off; slide off the edge to fly (`src/plane/landing.ts`)
 - [x] Obvious landing spots: paper runways (dashes, threshold bars, arrows, edge lights that glow at night) on flat floating-mountain tops, kept clear of trees; H helipads on small islands; HUD points to the nearest pad

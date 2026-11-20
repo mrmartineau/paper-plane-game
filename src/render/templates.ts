@@ -20,6 +20,8 @@ export const POLE = 0xf4efe4;
 const GRASS = 0x7fa564;
 const SKY_ROCK = 0x9d958a;
 const LANTERN = 0xffd08a;
+const CONCRETE = 0xe6e1d4;
+const GLASS = 0x4f6b86;
 
 /** Paint a geometry one colour, make it non-indexed, and keep only position + colour. */
 export function part(
@@ -266,6 +268,36 @@ function lantern(): THREE.BufferGeometry {
 	]);
 }
 
+/** A paper tower at unit size: concrete box + rows of glass panes (separate, so they can glow at night). */
+function tower(bands: number): {
+	walls: THREE.BufferGeometry;
+	windows: THREE.BufferGeometry;
+} {
+	const walls = part(
+		new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0),
+		CONCRETE,
+	);
+	const panes: THREE.BufferGeometry[] = [];
+	const glassH = 0.5 / bands;
+	for (let i = 0; i < bands; i++) {
+		const y = (i + 0.5) / bands;
+		for (const [ry, ox, oz] of [
+			[0, 0, 0.506],
+			[Math.PI, 0, -0.506],
+			[Math.PI / 2, 0.506, 0],
+			[-Math.PI / 2, -0.506, 0],
+		] as const) {
+			panes.push(
+				part(
+					new THREE.PlaneGeometry(0.8, glassH).rotateY(ry).translate(ox, y, oz),
+					GLASS,
+				),
+			);
+		}
+	}
+	return { walls, windows: merge(panes) };
+}
+
 function pole(): THREE.BufferGeometry {
 	return part(
 		new THREE.CylinderGeometry(1, 1, 1, 5).translate(0, 0.5, 0),
@@ -293,6 +325,8 @@ function buildAll() {
 		floater: floater(),
 		pole: pole(),
 		lantern: lantern(),
+		towers: [6, 14, 30].map(tower), // by height: low, mid, tall
+		slab: part(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0), 0xd8d2c4),
 	};
 }
 export function templates() {

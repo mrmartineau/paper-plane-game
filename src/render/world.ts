@@ -236,6 +236,53 @@ export function createWorldMeshes(
 			},
 		},
 		{
+			cellSize: p.cityCell,
+			get range() {
+				return p.featureRange;
+			},
+			build(cx, cz) {
+				const c = features.cityCell(cx, cz);
+				if (c.buildings.length === 0) return null;
+				const walls: Placement[] = [];
+				const windows: Placement[] = [];
+				for (const b of c.buildings) {
+					const at = {
+						x: b.x,
+						y: b.base,
+						z: b.z,
+						yaw: b.yaw,
+						sx: b.w,
+						sy: b.h,
+						sz: b.d,
+					};
+					if (b.kind === "slab") {
+						walls.push({ geo: t.slab, ...at });
+						continue;
+					}
+					const k = b.h < 45 ? 0 : b.h < 110 ? 1 : 2;
+					walls.push({ geo: t.towers[k].walls, ...at, tint: b.tint });
+					windows.push({ geo: t.towers[k].windows, ...at });
+					// Tall towers get a narrower crown.
+					if (b.h > 70)
+						walls.push({
+							geo: t.slab,
+							...at,
+							y: b.base + b.h,
+							sx: b.w * 0.6,
+							sy: b.h * 0.1,
+							sz: b.d * 0.6,
+							tint: b.tint * 0.9,
+						});
+				}
+				const group = new THREE.Group();
+				const wallMesh = mesh(bake(walls), propMaterial);
+				const glass = mesh(bake(windows), lanternMaterial, false); // lantern material: windows glow at night
+				if (wallMesh) group.add(wallMesh);
+				if (glass) group.add(glass);
+				return group;
+			},
+		},
+		{
 			cellSize: p.floaterCell,
 			get range() {
 				return p.featureRange;
