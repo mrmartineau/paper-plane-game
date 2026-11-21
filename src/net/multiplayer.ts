@@ -13,7 +13,7 @@ import { fire, SHOT, type Shot, segmentHits, stepShots } from "../plane/shots";
 import { PLANES, type PlaneId } from "../plane/types";
 import { connect, type NetLink } from "./client";
 import { CRASHED, type PlayerState, type Vec } from "./protocol";
-import { createRemotes } from "./remotes";
+import { createRemotes, type Pose } from "./remotes";
 
 const MAX_SHOTS = 128;
 
@@ -35,6 +35,8 @@ export function createMultiplayer(
 		onHit: (by: number) => void;
 		/** Someone scored (maybe you). */
 		onScore: (id: number, mine: boolean) => void;
+		/** The first other player you can see after joining: a good place to spawn. */
+		onFirstPeer: (pose: Pose) => void;
 	},
 ) {
 	let link: NetLink | null = null;
@@ -43,6 +45,7 @@ export function createMultiplayer(
 	let shots: Shot[] = [];
 	let cooldown = 0;
 	let clock = 0; // seconds, for the interpolation buffer
+	let greeted = false; // already moved next to someone since joining
 
 	const balls = new THREE.InstancedMesh(
 		paperBallGeometry(0.5, 0),
@@ -91,6 +94,7 @@ export function createMultiplayer(
 			link = null;
 			shots = [];
 		}
+		greeted = false;
 	}
 
 	const tmp = new THREE.Matrix4();
@@ -110,6 +114,31 @@ export function createMultiplayer(
 		get score() {
 			return (link?.id != null && link.players.get(link.id)?.score) || 0;
 		},
+		/** Other players now: position and colour (for the radar). */
+		peers(): { x: number; y: number; z: number; colour: string }[] {
+			const out = [];
+			for (const id of remotes.ids()) {
+				const pose = remotes.sample(id, clock);
+				if (!pose || pose.f & CRASHED) continue;
+				out.push({
+					x: pose.p[0],
+					y: pose.p[1],
+					z: pose.p[2],
+					colour: link?.players.get(id)?.colour ?? "#ffffff",
+				});
+			}
+			return out;
+		},
+		/** A random other player's pose, to respawn next to. */
+		randomPeer(): Pose | null {
+			const ids = [...remotes.ids()];
+			for (let n = ids.length; n > 0; n--) {
+				const id = ids.splice(Math.floor(Math.random() * n), 1)[0];
+				const pose = remotes.sample(id, clock);
+				if (pose && !(pose.f & CRASHED)) return pose;
+			}
+			return null;
+		},
 		/** Throw a paper ball (only works online, with a short cooldown). */
 		shoot(p: Vec, fwd: Vec, vel: Vec) {
 			if (!link || link.id == null || cooldown > 0) return false;
@@ -126,6 +155,13 @@ export function createMultiplayer(
 			shots = stepShots(shots, dt, world.groundAt, world.solidAt);
 			if (!link) return;
 			link.sendState(me, clock);
+			if (!greeted) {
+				const peer = this.randomPeer();
+				if (peer) {
+					greeted = true;
+					events.onFirstPeer(peer);
+				}
+			}
 			if (!hittable) return;
 			const hit = shots.find(
 				(s) => s.by !== null && segmentHits(s.prev, s.p, me.p, SHOT.hitRadius),

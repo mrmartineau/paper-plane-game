@@ -189,6 +189,9 @@
 
       /* Photo mode: hide everything but the picture and a small toolbar */
       body.photo #hud, body.photo .corner-btn, body.photo #help-btn, body.photo #help, body.photo .lil-gui, body.photo pre { display: none; }
+      #radar { position: fixed; top: 12px; right: 12px; width: 120px; height: 120px; pointer-events: none; }
+      #radar[hidden] { display: none; }
+      body.photo #radar { display: none; }
       #photo-bar {
         position: fixed; left: 50%; bottom: 20px; translate: -50% 0; display: flex; gap: 8px; align-items: center;
         padding: 8px 10px; background: var(--paper); color: var(--ink);
@@ -320,6 +323,7 @@
     </button>
 
     <div id="hud">
+      <canvas id="radar" width="120" height="120" hidden aria-label="Radar: other players"></canvas>
       <div id="course" class="card course" role="status" hidden></div>
       <div class="compass card" aria-hidden="true">
         <div class="compass-tape"></div>

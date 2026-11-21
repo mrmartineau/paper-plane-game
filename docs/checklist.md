@@ -120,5 +120,7 @@ Pulled forward because they were one-liners: sun shadow that follows the plane, 
 - [x] Other players drawn 100 ms behind, blended between updates, tinted with their colour; a paper ball when they crash (`src/net/remotes.ts`, `src/net/multiplayer.ts`)
 - [x] Paper-ball shots: F, right mouse, gamepad X/RB, touch FIRE; the hit plane crumples, the shooter gets a hit (`src/plane/shots.ts`)
 - [x] HUD: players online and hits. Menu: Fly with others on/off
+- [x] Radar (top-right): other players as dots in their colour, you in the middle facing up; hollow = below you, dash = above (`src/ui/radar.ts`)
+- [x] Spawn next to another player: on joining and after a crash (60–140 m away, same heading)
 - [ ] **Done when:** two people on the same seed see each other fly smoothly and can shoot each other down (you, after deploy)
 

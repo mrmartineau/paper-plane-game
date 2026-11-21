@@ -19,7 +19,7 @@ import { passedThrough } from "./courses/rings";
 import { type Best, createRun } from "./courses/run";
 import { createDevJumps, createDevPanel, type Telemetry } from "./debug";
 import { createMultiplayer } from "./net/multiplayer";
-import { BOOST, CRASHED, RUNNING } from "./net/protocol";
+import { BOOST, CRASHED, type Quat, RUNNING } from "./net/protocol";
 import { createCrash, respawnAt } from "./plane/crash";
 import {
 	axes,
@@ -63,6 +63,7 @@ import { setupHelp } from "./ui/help";
 import { createHud } from "./ui/hud";
 import { createMenu } from "./ui/menu";
 import { createPhotoMode } from "./ui/photoMode";
+import { createRadar } from "./ui/radar";
 import { createStats } from "./ui/stats";
 import { blend } from "./world/biomes";
 import { createBirdField } from "./world/birds";
@@ -214,6 +215,7 @@ const mp = createMultiplayer(
 			sound.crumple();
 			coursePanel.flash("Hit by a paper ball!", time);
 		},
+		onFirstPeer: (peer) => place(spawnBeside(peer.p[0], peer.p[2], peer.q)),
 		onScore: (_id, mine) => {
 			if (!mine) return;
 			sound.chime(1.2);
@@ -221,6 +223,19 @@ const mp = createMultiplayer(
 		},
 	},
 );
+/** A fresh flight state a short way from another player, flying the same way. */
+function spawnBeside(x: number, z: number, q: Quat): FlightState {
+	const a = Math.random() * Math.PI * 2;
+	const r = 60 + Math.random() * 80;
+	return respawnAt(
+		x + Math.cos(a) * r,
+		z + Math.sin(a) * r,
+		heading({ x: q[0], y: q[1], z: q[2], w: q[3] }),
+		groundAt,
+		env.solidAt,
+	);
+}
+const radar = createRadar();
 mp.setOnline(settings.online);
 input.showFire(settings.online);
 const chase = createChaseCam(camera, groundAt);
@@ -420,7 +435,11 @@ function update(dt: number) {
 		);
 	}
 	const fresh = crash.update(dt);
-	if (fresh) place(fresh);
+	if (fresh) {
+		// Online: come back next to someone, so it stays lively.
+		const peer = mp.randomPeer();
+		place(peer ? spawnBeside(peer.p[0], peer.p[2], peer.q) : fresh);
+	}
 	if (crash.phase === "rolling") {
 		airHere = 0;
 		return;
@@ -737,6 +756,7 @@ function render(alpha: number, frameDt: number) {
 	);
 
 	mp.render(time);
+	radar.update(pos, heading(state.orientation), mp.peers());
 	hoopMeshes.update(nearbyHoops, time, hoopPasses);
 	vineMeshes.update(nearbyVines, time);
 	birdMeshes.update(
