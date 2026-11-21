@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fire, SHOT, type Shot, segmentHits, stepShots } from "./shots";
+import { aimAt, fire, SHOT, type Shot, segmentHits, stepShots } from "./shots";
 
 const flat = () => 0;
 const none = () => false;
@@ -33,5 +33,26 @@ describe("paper-ball shots", () => {
 		expect(segmentHits([0, 0, 0], [0, 0, -10], [0, 1, -5], 2.5)).toBe(true);
 		expect(segmentHits([0, 0, 0], [0, 0, -10], [0, 5, -5], 2.5)).toBe(false);
 		expect(segmentHits([0, 0, 0], [0, 0, -10], [0, 0, -14], 2.5)).toBe(false);
+	});
+});
+
+describe("auto-aim", () => {
+	it("aims straight at a target that is straight ahead and standing still", () => {
+		const d = aimAt([0, 0, -1], [0, 0, -100], [0, 0, 0]);
+		expect(d?.[2]).toBeLessThan(-0.99);
+		expect(d?.[1]).toBeGreaterThan(0); // a touch high, the ball drops
+	});
+
+	it("leads a target that moves across", () => {
+		const d = aimAt([0, 0, -1], [0, 0, -200], [20, 0, 0]);
+		expect(d?.[0]).toBeGreaterThan(0.05); // aims to the right of where they are now
+	});
+
+	it("ignores targets outside the cone or out of range", () => {
+		expect(aimAt([0, 0, -1], [100, 0, -20], [0, 0, 0])).toBeNull(); // off to the side
+		expect(aimAt([0, 0, -1], [0, 0, 100], [0, 0, 0])).toBeNull(); // behind
+		expect(
+			aimAt([0, 0, -1], [0, 0, -(SHOT.aimRange + 50)], [0, 0, 0]),
+		).toBeNull();
 	});
 });

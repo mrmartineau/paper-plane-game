@@ -42,7 +42,11 @@ export function createMarkers(camera: THREE.PerspectiveCamera) {
 
 	return {
 		/** Call every frame after the camera has moved. `me` = your position. */
-		update(me: { x: number; y: number; z: number }, peers: Peer[]) {
+		update(
+			me: { x: number; y: number; z: number },
+			peers: Peer[],
+			lockedId: number | null = null,
+		) {
 			const seen = new Set<number>();
 			const w = innerWidth;
 			const h = innerHeight;
@@ -96,6 +100,7 @@ export function createMarkers(camera: THREE.PerspectiveCamera) {
 				m.el.style.transform = `translate(${sx.toFixed(1)}px, ${sy.toFixed(1)}px)`;
 				m.el.style.setProperty("--c", p.colour);
 				m.el.classList.toggle("target", p.id === nearest);
+				m.el.classList.toggle("locked", p.id === lockedId);
 				m.ring.hidden = !inView;
 				m.arrow.hidden = inView;
 				if (!inView) m.arrow.style.transform = `rotate(${angle.toFixed(0)}deg)`;

@@ -9,7 +9,14 @@ import {
 	paperBallGeometry,
 	paperBallMaterial,
 } from "../plane/model";
-import { fire, SHOT, type Shot, segmentHits, stepShots } from "../plane/shots";
+import {
+	aimAt,
+	fire,
+	SHOT,
+	type Shot,
+	segmentHits,
+	stepShots,
+} from "../plane/shots";
 import { PLANES, type PlaneId } from "../plane/types";
 import { connect, type NetLink } from "./client";
 import { CRASHED, type PlayerState, type Vec } from "./protocol";
@@ -173,11 +180,39 @@ export function createMultiplayer(
 			}
 			return null;
 		},
-		/** Throw a paper ball (only works online, with a short cooldown). */
+		/**
+		 * Auto-aim: the player in front of you (inside the cone) closest to your nose, and
+		 * the direction to throw to hit them. Null when nobody is in reach.
+		 */
+		aim(p: Vec, fwd: Vec, vel: Vec): { id: number; dir: Vec } | null {
+			let best: { id: number; dir: Vec } | null = null;
+			let bestDot = -1;
+			for (const id of remotes.ids()) {
+				const a = remotes.sample(id, clock);
+				const b = remotes.sample(id, clock - 0.25);
+				if (!a || !b || a.f & CRASHED) continue;
+				// Their velocity from where they were a moment ago; they are also a little
+				// further along than the 100 ms we draw them behind.
+				const tv: Vec = [0, 1, 2].map((i) => (a.p[i] - b.p[i]) / 0.25) as Vec;
+				const rel: Vec = [0, 1, 2].map(
+					(i) => a.p[i] + tv[i] * 0.15 - p[i],
+				) as Vec;
+				const relVel: Vec = [0, 1, 2].map((i) => tv[i] - vel[i]) as Vec;
+				const dir = aimAt(fwd, rel, relVel);
+				if (!dir) continue;
+				const dot = dir[0] * fwd[0] + dir[1] * fwd[1] + dir[2] * fwd[2];
+				if (dot > bestDot) {
+					bestDot = dot;
+					best = { id, dir };
+				}
+			}
+			return best;
+		},
+		/** Throw a paper ball (only works online, with a short cooldown). Auto-aims if it can. */
 		shoot(p: Vec, fwd: Vec, vel: Vec) {
 			if (!link || link.id == null || cooldown > 0) return false;
 			cooldown = SHOT.cooldown;
-			const s = fire(p, fwd, vel);
+			const s = fire(p, this.aim(p, fwd, vel)?.dir ?? fwd, vel);
 			shots.push({ p: s.p, prev: [...s.p], v: s.v, age: 0, by: null });
 			link.send({ t: "shot", p: s.p, v: s.v });
 			return true;

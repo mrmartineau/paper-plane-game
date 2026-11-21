@@ -786,7 +786,16 @@ function render(alpha: number, frameDt: number) {
 		nextRing ? pointTo(pos.x, pos.z, bearing, nextRing.x, nextRing.z) : "",
 		padPointer(),
 	);
-	markers.update(pos, peers); // after the camera has moved this frame
+	// Auto-aim lock shows on the marker of whoever a thrown ball would chase.
+	const lock =
+		flying && !running
+			? mp.aim(
+					[pos.x, pos.y, pos.z],
+					[fwd.x, fwd.y, fwd.z],
+					[state.velocity.x, state.velocity.y, state.velocity.z],
+				)
+			: null;
+	markers.update(pos, peers, lock?.id ?? null); // after the camera has moved this frame
 	sky.update(camera, light.horizon, light.zenith, light.night);
 	renderer.render(scene, camera);
 }
