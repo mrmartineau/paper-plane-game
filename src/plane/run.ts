@@ -78,20 +78,29 @@ export function stepRun(
 	const sprinting = walker && input.boost && s.fuel > 0 && !s.boostLocked;
 	const boost = sprinting ? c.runSprint : 1;
 
-	// Push forward to run; pull back to brake. You can turn on the spot, a bit slower.
-	const want = Math.max(0, -input.pitch) * c.runSpeed * boost;
-	const brake = input.pitch > 0.05 ? 2 : 1;
-	let speed = s.airspeed;
-	speed +=
-		want > speed
-			? Math.min(want - speed, c.runAccel * boost * dt)
-			: -Math.min(speed - want, c.runBrake * brake * dt);
+	// Push forward to run. Pull back to brake, and once stopped, walk backwards. Speed is
+	// signed here: negative = backwards (FlightState.airspeed stays the size of it).
+	const back = Math.max(0, input.pitch);
+	const want =
+		Math.max(0, -input.pitch) * c.runSpeed * boost -
+		back * c.runSpeed * c.runReverse;
+	let speed = -(s.velocity.x * Math.sin(yaw) + s.velocity.z * Math.cos(yaw)); // along the heading
+	const diff = want - speed;
+	const rate =
+		diff > 0
+			? speed < 0
+				? c.runBrake
+				: c.runAccel * boost
+			: speed > 0
+				? c.runBrake * (back > 0.05 ? 2 : 1)
+				: c.runAccel;
+	speed += Math.sign(diff) * Math.min(Math.abs(diff), rate * dt);
 	const newYaw =
 		yaw -
 		input.roll *
 			c.runTurn *
 			dt *
-			(0.4 + 0.6 * Math.min(1, speed / (c.runSpeed * 0.5)));
+			(0.4 + 0.6 * Math.min(1, Math.abs(speed) / (c.runSpeed * 0.5)));
 
 	let x = s.position.x - Math.sin(newYaw) * speed * dt;
 	let z = s.position.z - Math.cos(newYaw) * speed * dt;
@@ -99,7 +108,7 @@ export function stepRun(
 	let floor = env.floorAt(x, s.position.y, z);
 
 	// Blocked by a steep rise or something solid at body or knee height?
-	const maxRise = c.runStep + speed * dt * c.runSlope;
+	const maxRise = c.runStep + Math.abs(speed) * dt * c.runSlope;
 	if (
 		floor - footY > maxRise ||
 		env.solidAt(x, floor + c.runHeight, z) ||
@@ -127,7 +136,7 @@ export function stepRun(
 		const t = createFlightState(
 			{ x, y: s.position.y, z },
 			newYaw,
-			Math.max(speed, c.takeoffSpeed * 0.6),
+			Math.max(Math.abs(speed), c.takeoffSpeed * 0.6),
 		);
 		return {
 			state: { ...t, fuel: s.fuel, boostLocked: s.boostLocked },
@@ -166,7 +175,7 @@ function standing(
 	speed: number,
 	c: Flight,
 ): FlightState {
-	const t = createFlightState({ x, y, z }, yaw, speed);
+	const t = createFlightState({ x, y, z }, yaw, Math.abs(speed)); // airspeed is the size; velocity has the direction
 	t.orientation = fromEuler(yaw, c.restPitch, 0);
 	t.velocity = { x: -Math.sin(yaw) * speed, y: 0, z: -Math.cos(yaw) * speed };
 	return { ...t, fuel: s.fuel, boostLocked: s.boostLocked };

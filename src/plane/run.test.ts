@@ -258,4 +258,15 @@ describe("paper animal running", () => {
 			expect(hit.airspeed).toBe(0);
 		});
 	});
+
+	it("animals walk backwards: pull back brakes, then reverses at a slower speed", () => {
+		const back: InputState = { pitch: 1, roll: 0, boost: false };
+		const going = run(start(), 3, forward, flat(0)).s; // up to speed, heading -Z
+		const braked = run(going, 0.6, back, flat(0)).s;
+		expect(braked.position.z).toBeLessThan(going.position.z); // still carried forward a bit
+		const reversing = run(braked, 4, back, flat(0)).s;
+		expect(reversing.position.z).toBeGreaterThan(braked.position.z + 5); // moved backwards (+Z)
+		expect(reversing.airspeed).toBeCloseTo(c.runSpeed * c.runReverse, 0); // slower than forward
+		expect(reversing.velocity.z).toBeGreaterThan(0);
+	});
 });

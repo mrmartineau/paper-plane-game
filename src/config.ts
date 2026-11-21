@@ -57,6 +57,7 @@ export const config = {
 		runFall: 3, // a drop bigger than this and it flies off the edge
 		runStride: 1.8, // leg phase per metre
 		landCarry: 0.7, // share of horizontal speed kept when landing
+		runReverse: 0.4, // backward speed as a share of top speed (pull back once stopped)
 		runSprint: 1.7, // land animals: speed multiplier while Space sprints (uses the boost tank)
 		skatePush: 12, // skateboard: W kicks you up to this speed (m/s); downhill goes faster
 		skateAccel: 10, // m/s² while kicking
