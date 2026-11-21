@@ -7,7 +7,7 @@ import {
 	type FlightState,
 	stepFlight,
 } from "./flight";
-import { PLANE_IDS, PLANES } from "./types";
+import { PLANES, type PlaneId } from "./types";
 
 const env: FlightEnv = {
 	groundAt: () => -Infinity,
@@ -17,7 +17,7 @@ const env: FlightEnv = {
 };
 const dt = 1 / 60;
 
-describe.each(PLANE_IDS)("plane %s", (id) => {
+describe.each(Object.keys(PLANES) as PlaneId[])("plane %s", (id) => {
 	const c = { ...config.flight, ...PLANES[id].flight };
 	const fly = (s: FlightState, seconds: number, pitch = 0, boost = false) => {
 		for (let i = 0; i < seconds * 60; i++)
@@ -27,7 +27,7 @@ describe.each(PLANE_IDS)("plane %s", (id) => {
 
 	it("has a small origami fold", () => {
 		expect(PLANES[id].tris.length).toBeGreaterThanOrEqual(6);
-		expect(PLANES[id].tris.length).toBeLessThanOrEqual(12);
+		expect(PLANES[id].tris.length).toBeLessThanOrEqual(24);
 	});
 
 	it("settles into a steady glide above its stall speed", () => {

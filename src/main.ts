@@ -5,7 +5,12 @@ import { createChaseCam } from "./camera/chaseCam";
 import { config } from "./config";
 import { createInput } from "./core/input";
 import { startLoop } from "./core/loop";
-import { applySettings, isTouchDevice, settings } from "./core/settings";
+import {
+	applySettings,
+	isTouchDevice,
+	saveSettings,
+	settings,
+} from "./core/settings";
 import { storage } from "./core/storage";
 import { type Course, createCourses } from "./courses/generate";
 import { decodeGhost, encodeGhost } from "./courses/ghost";
@@ -30,7 +35,8 @@ import {
 	touchdownOk,
 } from "./plane/landing";
 import { createPlaneModel } from "./plane/model";
-import { PLANES, type PlaneId, randomPlane } from "./plane/types";
+import { landRun, type RunEnv, runTakeOff, stepRun } from "./plane/run";
+import { ANIMAL_ID, PLANES, type PlaneId, randomPlane } from "./plane/types";
 import { createAirColumns } from "./render/airColumns";
 import { createBirdMeshes } from "./render/birdMeshes";
 import { createBoostTrail } from "./render/boostTrail";
@@ -165,8 +171,11 @@ let nearbyClouds: Cloud[] = [];
 // --- Plane ---
 // Plane type: random each start (unless one is picked in the menu). Each has its own handling.
 const baseFlight = { ...config.flight };
-let planeId: PlaneId =
+let flyPlane: PlaneId =
 	settings.plane === "random" ? randomPlane() : settings.plane;
+/** Which model is in use: the paper crane in animal mode, otherwise the chosen plane. */
+const currentId = (): PlaneId => (settings.animal ? ANIMAL_ID : flyPlane);
+let planeId: PlaneId = currentId();
 const plane = createPlaneModel(planeId);
 function usePlane(id: PlaneId) {
 	planeId = id;
@@ -237,9 +246,40 @@ function place(s: FlightState) {
 	snapped = false;
 	quality.hold(); // the world reloads around the new spot; don't judge those frames
 	parked = null;
+	running = false;
 }
 
 let paused = false;
+let running = false; // a paper animal on the ground
+let runPhase = 0; // leg swing, advances with distance run
+let morphAt = -10; // when you last turned into a plane or an animal (a little pop)
+const easeOutBack = (x: number) =>
+	1 + 2.70158 * (x - 1) ** 3 + 1.70158 * (x - 1) ** 2;
+/** Ground for the running animal: terrain, or the top of a landing pad. */
+const runEnv: RunEnv = {
+	floorAt: (x, y, z) => {
+		const pad = features.padAt(x, y, z, config.flight.landPadTolerance);
+		return pad ? Math.max(pad.y, groundAt(x, z)) : groundAt(x, z);
+	},
+	solidAt: env.solidAt,
+};
+
+/** Switch between paper plane and paper animal (setting or the T key). */
+function setForm() {
+	usePlane(currentId());
+	morphAt = time;
+	if (running && !settings.animal) {
+		state = runTakeOff(state, config.flight); // a plane can't run: take off
+		prev = state;
+		running = false;
+	}
+	coursePanel.flash(
+		settings.animal
+			? "Paper crane · land to run · Space to fly"
+			: "Paper plane",
+		time,
+	);
+}
 let parked: Parked | null = null; // landed on a floating island
 let assistOffUntil = 0; // no landing pull until this time (just took off)
 
@@ -297,6 +337,28 @@ function update(dt: number) {
 		return;
 	}
 
+	// A paper animal on the ground: run, step, climb, drop off edges, Space takes off.
+	if (running) {
+		const r = stepRun(state, i, dt, config.flight, runEnv);
+		state = r.state;
+		runPhase += state.airspeed * dt * config.flight.runStride;
+		if (r.mode === "fly") {
+			running = false;
+			assistOffUntil = time + config.flight.assistCooldown;
+			sound.chime(0.6);
+		} else {
+			const p = state.position;
+			telemetry.airspeed = state.airspeed;
+			telemetry.altitude = p.y - groundAt(p.x, p.z);
+			telemetry.climb = 0;
+			telemetry.lift = 1;
+			airHere = 0;
+			tracker.step(dt, state, telemetry.altitude, 0);
+			coursePanel.flash("Running · Space to fly · T for plane", time);
+			return;
+		}
+	}
+
 	// Parked on a floating island: slide, refuel, boost to take off.
 	if (parked) {
 		if (i.boost) {
@@ -333,6 +395,20 @@ function update(dt: number) {
 		// A gentle touchdown on a floating island's grassy top is a landing, not a crash.
 		const p = res.state.position;
 		const pad = features.padAt(p.x, p.y, p.z, config.flight.landPadTolerance);
+		// Paper animal: any gentle touchdown on the ground or a pad is a landing, then it runs.
+		if (settings.animal && touchdownOk(res.state, config.flight)) {
+			const g = groundAt(p.x, p.z);
+			const floor = pad ? pad.y : p.y < g + config.flight.clearance ? g : null;
+			if (floor !== null) {
+				state = landRun(res.state, floor, config.flight);
+				prev = state;
+				running = true;
+				runPhase = 0;
+				tracker.stats.landings++;
+				sound.chime(0.5);
+				return;
+			}
+		}
 		if (pad && touchdownOk(res.state, config.flight)) {
 			({ state, parked } = land(res.state, pad, config.flight));
 			prev = state;
@@ -438,7 +514,12 @@ function render(alpha: number, frameDt: number) {
 	plane.mesh.position.copy(pos);
 	const k = crash.render(alpha);
 	plane.mesh.visible = k > 0.01;
-	plane.mesh.scale.setScalar(config.plane.scale * k);
+	plane.mesh.scale.setScalar(
+		config.plane.scale *
+			k *
+			(0.5 + 0.5 * easeOutBack(Math.min(1, (time - morphAt) / 0.4))),
+	);
+	plane.runPose(runPhase, running ? 1 : 0);
 	plane.flutter(
 		time,
 		Math.min(1, state.airspeed / config.plane.flutterSpeedRef),
@@ -581,14 +662,24 @@ const menu = createMenu({
 	},
 	onRecalibrate: () => input.tilt.recalibrate(),
 	onPhoto: () => photo.enter(),
-	planeName: () => PLANES[planeId].name,
+	planeName: () => PLANES[flyPlane].name,
 	onPlane: (choice) => {
-		usePlane(choice === "random" ? randomPlane() : choice);
-		return PLANES[planeId].name;
+		flyPlane = choice === "random" ? randomPlane() : choice;
+		usePlane(currentId());
+		return PLANES[flyPlane].name;
 	},
+	onForm: () => setForm(),
 	onResume: () => {
 		if (!isTouchDevice()) renderer.domElement.requestPointerLock();
 	},
+});
+
+addEventListener("keydown", (e) => {
+	if (e.code !== "KeyT" || e.repeat || paused || photo.active) return;
+	if ((e.target as HTMLElement).closest?.("input, select, textarea")) return;
+	settings.animal = !settings.animal;
+	saveSettings();
+	setForm();
 });
 
 if (params.has("debug")) {

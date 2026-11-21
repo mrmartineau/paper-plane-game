@@ -9,6 +9,7 @@ Tracks [paper-plane-game-plan.md](./paper-plane-game-plan.md). Tick items as the
 - [x] Game loop: fixed 60Hz + accumulator, interpolated render, delta clamp, pause on `visibilitychange` (`src/core/loop.ts`)
 - [x] Origami plane model, 6 triangles, two-tone paper (`src/plane/model.ts`)
 - [x] Bigger plane, camera closer; camera smooths its offset so speed adds no lag
+- [x] Paper animal mode (menu checkbox, or **T**): a paper crane that flies like a glider, lands anywhere with a gentle touchdown and runs (W run, S brake, A D turn), steps up ledges, is stopped by steep walls and solid things, drops off edges into a glide, Space takes off; legs swing when running and tuck when flying (`src/plane/run.ts`)
 - [x] Four planes, random each start or picked in the menu: Dart (balanced), Glider (floaty), Arrow (fast), Stunt (flips); each its own fold, tint and handling (`src/plane/types.ts`)
 - [x] Wing-tip flutter scaled with speed
 - [x] Chase cam: lerp position, slerp rotation (`src/camera/chaseCam.ts`)

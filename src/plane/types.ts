@@ -6,7 +6,7 @@ type P = [number, number, number];
 type Rgb = [number, number, number];
 export type Tri = [P, P, P, Rgb];
 
-export type PlaneId = "dart" | "glider" | "arrow" | "stunt";
+export type PlaneId = "dart" | "glider" | "arrow" | "stunt" | "crane";
 
 export interface PlaneType {
 	id: PlaneId;
@@ -14,6 +14,7 @@ export interface PlaneType {
 	blurb: string;
 	tris: Tri[];
 	flight: Partial<Config["flight"]>;
+	animal?: boolean; // a paper animal: lands anywhere and runs (see run.ts)
 }
 
 const shade = (c: Rgb, k: number): Rgb => [c[0] * k, c[1] * k, c[2] * k];
@@ -95,6 +96,50 @@ function stunt(): Tri[] {
 	);
 }
 
+/** Colour that marks leg triangles, so the model can swing them when running. */
+export const LEG: Rgb = [0.93, 0.6, 0.45];
+
+/** Origami crane: body, long neck, beak, tail fin, flapping wings, and legs that run. */
+function crane(): Tri[] {
+	const W: Rgb = [0.98, 0.97, 0.94];
+	const RED: Rgb = [0.92, 0.5, 0.42];
+	const F: P = [0, 0.15, -0.35]; // chest
+	const B: P = [0, 0.12, 0.5]; // rump
+	const T: P = [0, 0.3, 0.05]; // back
+	const U: P = [0, -0.12, 0.05]; // belly
+	const L: P = [-0.2, 0.08, 0.05];
+	return fold(
+		[
+			[F, L, T, W],
+			[L, B, T, shade(W, 0.93)],
+			[F, U, L, shade(W, 0.85)],
+			[L, U, B, shade(W, 0.8)],
+			// wings: inner panel and a coloured outer tip
+			[[-0.12, 0.2, -0.15], [-0.7, 0.3, 0.02], [-0.12, 0.18, 0.3], W],
+			[[-0.7, 0.3, 0.02], [-1.05, 0.36, 0.1], [-0.85, 0.3, 0.42], RED],
+			[
+				[-0.12, 0.18, 0.3],
+				[-0.7, 0.3, 0.02],
+				[-0.85, 0.3, 0.42],
+				shade(W, 0.92),
+			],
+			// legs (thin, hanging): upper leg, then a foot
+			[[-0.1, 0.0, 0.15], [-0.15, 0.0, 0.15], [-0.1, -0.55, 0.1], LEG],
+			[[-0.1, -0.55, 0.1], [-0.15, -0.55, 0.1], [-0.12, -0.57, -0.12], LEG],
+		],
+		[
+			[F, [0, 0.3, -0.2], [0, 0.6, -0.72], shade(W, 0.96)], // neck
+			[
+				[0, 0.6, -0.72],
+				[0, 0.68, -0.78],
+				[0, 0.55, -1.08],
+				[0.97, 0.6, 0.4],
+			], // head and beak
+			[B, T, [0, 0.42, 0.9], shade(W, 0.9)], // tail
+		],
+	);
+}
+
 export const PLANES: Record<PlaneId, PlaneType> = {
 	dart: {
 		id: "dart",
@@ -152,9 +197,31 @@ export const PLANES: Record<PlaneId, PlaneType> = {
 			boostAgility: 1,
 		},
 	},
+	crane: {
+		id: "crane",
+		name: "Paper crane",
+		blurb: "Flies like a glider, lands anywhere and runs",
+		tris: crane(),
+		animal: true,
+		flight: {
+			drag: 0.0028,
+			glidePitch: -0.09,
+			stallSpeed: 10,
+			liftCoeff: 0.085,
+			rollRate: 2.2,
+			pitchRate: 1.5,
+			turnCoeff: 0.04,
+			boost: 28,
+			boostMaxSpeed: 85,
+		},
+	},
 };
 
-export const PLANE_IDS = Object.keys(PLANES) as PlaneId[];
+/** The fliers you can pick from (paper animals are a separate setting). */
+export const PLANE_IDS = (Object.keys(PLANES) as PlaneId[]).filter(
+	(id) => !PLANES[id].animal,
+);
+export const ANIMAL_ID: PlaneId = "crane";
 
 export function randomPlane(): PlaneId {
 	return PLANE_IDS[Math.floor(Math.random() * PLANE_IDS.length)];

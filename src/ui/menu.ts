@@ -19,6 +19,7 @@ export interface MenuHooks {
 	onPhoto(): void;
 	onPlane(choice: Settings["plane"]): string; // returns the name of the plane now flying
 	planeName(): string;
+	onForm(): void; // paper animal on/off
 	seed: string;
 }
 
@@ -73,6 +74,15 @@ export function createMenu(hooks: MenuHooks) {
 		showPlane(hooks.onPlane(settings.plane));
 	});
 	showPlane(hooks.planeName());
+
+	// Paper animal
+	const animal = $<HTMLInputElement>("[name=animal]");
+	animal.checked = settings.animal;
+	animal.addEventListener("change", () => {
+		settings.animal = animal.checked;
+		saveSettings();
+		hooks.onForm();
+	});
 
 	// Boost
 	const unlimited = $<HTMLInputElement>("[name=unlimited]");
@@ -153,6 +163,7 @@ export function createMenu(hooks: MenuHooks) {
 	const open = () => {
 		if (dialog.open) return;
 		copied.textContent = "";
+		animal.checked = settings.animal; // may have changed with the T key
 		dialog.showModal();
 		hooks.onPause(true);
 	};

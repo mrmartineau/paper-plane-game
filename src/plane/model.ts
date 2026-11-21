@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { config } from "../config";
 import { addBarycentric, createPaperMaterial } from "../render/paperMaterial";
-import { PLANES, type PlaneId, type Tri } from "./types";
+import { LEG, PLANES, type PlaneId, type Tri } from "./types";
 
 // The plane's mesh, built from a plane type's origami fold (see types.ts).
 // Two-sided paper, a little emissive so the underside isn't grey. Wing tips flutter.
@@ -12,6 +12,8 @@ export interface PlaneModel {
 	flutter(time: number, speed01: number): void;
 	/** Swap to another plane type's fold. */
 	setType(id: PlaneId): void;
+	/** Swing the legs (paper animals): `phase` advances as it runs; `amount` 1 = running, 0 = legs tucked for flight. */
+	runPose(phase: number, amount: number): void;
 }
 
 function foldGeometry(tris: Tri[]): THREE.BufferGeometry {
@@ -63,6 +65,32 @@ export function createPlaneModel(id: PlaneId): PlaneModel {
 	};
 	findTips();
 
+	// Leg vertices (marked by their colour), so a paper animal can swing them when it runs.
+	let legs: { i: number; y: number; z: number; side: number }[] = [];
+	const findLegs = () => {
+		const attr = mesh.geometry.getAttribute(
+			"position",
+		) as THREE.BufferAttribute;
+		const col = mesh.geometry.getAttribute("color") as THREE.BufferAttribute;
+		legs = [];
+		for (let i = 0; i < attr.count; i++) {
+			if (
+				Math.abs(col.getX(i) - LEG[0]) +
+					Math.abs(col.getY(i) - LEG[1]) +
+					Math.abs(col.getZ(i) - LEG[2]) <
+				0.02
+			) {
+				legs.push({
+					i,
+					y: attr.getY(i),
+					z: attr.getZ(i),
+					side: Math.sign(attr.getX(i)),
+				});
+			}
+		}
+	};
+	findLegs();
+
 	return {
 		mesh,
 		flutter(time, speed01) {
@@ -80,6 +108,21 @@ export function createPlaneModel(id: PlaneId): PlaneModel {
 			mesh.geometry = foldGeometry(PLANES[next].tris);
 			old.dispose();
 			findTips();
+			findLegs();
+		},
+		runPose(phase, amount) {
+			if (legs.length === 0) return;
+			const attr = mesh.geometry.getAttribute(
+				"position",
+			) as THREE.BufferAttribute;
+			const tuck = 1 - amount; // in flight the legs fold back and up
+			for (const l of legs) {
+				const k = Math.min(1, Math.max(0, -l.y / 0.5)); // feet move most, hips stay put
+				const swing = Math.sin(phase + l.side * 1.6) * 0.28 * amount;
+				attr.setZ(l.i, l.z + k * (swing + tuck * 0.3));
+				attr.setY(l.i, l.y + k * (tuck * 0.3 + Math.max(0, swing) * 0.12));
+			}
+			attr.needsUpdate = true;
 		},
 	};
 }

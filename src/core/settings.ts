@@ -20,6 +20,7 @@ export interface Settings {
 	boostSeconds: number; // a full tank lasts this long (3 .. 15)
 	cameraShake: boolean;
 	plane: PlaneId | "random"; // random = a new one every start
+	animal: boolean; // paper animal mode: a crane that lands anywhere and runs
 }
 
 const DEFAULTS: Settings = {
@@ -34,6 +35,7 @@ const DEFAULTS: Settings = {
 	boostSeconds: 6,
 	cameraShake: true,
 	plane: "random",
+	animal: false,
 };
 
 export const settings: Settings = {

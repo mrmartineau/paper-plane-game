@@ -46,6 +46,17 @@ export const config = {
 		takeoffSpeed: 16, // m/s
 		takeoffPitch: 0.35, // rad, nose up on take-off
 		restPitch: 0.05, // rad, nose up while parked
+		// Paper animal on the ground
+		runSpeed: 16, // m/s top speed
+		runAccel: 22, // m/s²
+		runBrake: 30, // m/s² (doubled while pulling back)
+		runTurn: 2.6, // rad/s
+		runHeight: 0.72, // body height above the ground (the legs' length)
+		runStep: 0.7, // metres it can step up
+		runSlope: 1, // steepest slope it climbs (rise per run)
+		runFall: 3, // a drop bigger than this and it flies off the edge
+		runStride: 1.8, // leg phase per metre
+		landCarry: 0.7, // share of horizontal speed kept when landing
 		landPadTolerance: 8, // metres above/below a pad's surface that still counts as touching it
 		maxSpeed: 60,
 		clearance: 0.4, // metres above ground before it counts as a crash
