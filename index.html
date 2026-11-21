@@ -28,8 +28,11 @@
         -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
         touch-action: manipulation; overscroll-behavior: none;
       }
-      button, canvas { -webkit-user-select: none; user-select: none; touch-action: none; }
+      /* Safari needs it on every element, not just inherited from body. */
+      * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+      button, canvas { touch-action: none; }
       input[type="text"], textarea { -webkit-user-select: text; user-select: text; }
+      .corner-btn { pointer-events: auto; } .corner-btn * { pointer-events: none; }
       canvas { display: block; touch-action: none; }
 
       #help-btn {
@@ -375,6 +378,8 @@
       for (const ev of ["gesturestart", "gesturechange", "gestureend"])
         document.addEventListener(ev, (e) => e.preventDefault());
       document.addEventListener("touchmove", (e) => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+      document.addEventListener("selectstart", (e) => { if (!e.target.closest?.("input, textarea")) e.preventDefault(); });
+      document.addEventListener("touchstart", (e) => { if (e.target.closest?.("#boost-btn, #fire-btn")) e.preventDefault(); }, { passive: false }); // hold buttons only: the pause button needs its tap click
       document.addEventListener("contextmenu", (e) => { if (e.target.closest("button, canvas")) e.preventDefault(); });
     </script>
     <script type="module" src="/src/main.ts"></script>
