@@ -7,7 +7,7 @@ import { storage } from "./storage";
 export type Quality = "auto" | "low" | "medium" | "high";
 export type Controls = "auto" | "keyboard" | "tilt" | "stick";
 export type TimeOfDay = "cycle" | "day" | "night";
-export type AnimalChoice = "off" | "crane" | "cheetah" | "dog";
+export type AnimalChoice = "off" | "crane" | "cheetah" | "dog" | "skateboard";
 
 export interface Settings {
 	quality: Quality;
@@ -21,7 +21,7 @@ export interface Settings {
 	boostSeconds: number; // a full tank lasts this long (3 .. 15)
 	cameraShake: boolean;
 	plane: PlaneId | "random"; // random = a new one every start
-	animal: AnimalChoice; // paper animal mode: a crane that flies and runs, or a cheetah / dog that runs
+	animal: AnimalChoice; // what you turn into: crane (flies and runs), cheetah / dog (run), skateboard (rolls)
 }
 
 const DEFAULTS: Settings = {

@@ -27,7 +27,7 @@ describe.each(Object.keys(PLANES) as PlaneId[])("plane %s", (id) => {
 
 	it("has a small origami fold", () => {
 		expect(PLANES[id].tris.length).toBeGreaterThanOrEqual(6);
-		expect(PLANES[id].tris.length).toBeLessThanOrEqual(36);
+		expect(PLANES[id].tris.length).toBeLessThanOrEqual(90);
 	});
 
 	it("settles into a steady glide above its stall speed", () => {

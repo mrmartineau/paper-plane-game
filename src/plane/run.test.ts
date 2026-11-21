@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { config } from "../config";
 import type { InputState } from "../core/input";
 import { axes, createFlightState, type FlightState, fromEuler } from "./flight";
-import { landRun, type RunEnv, stepRun } from "./run";
+import { landRun, type RunEnv, stepRun, stepSkate } from "./run";
 
 const c = config.flight;
 const dt = 1 / 60;
@@ -159,6 +159,103 @@ describe("paper animal running", () => {
 			}
 			expect(sawAir).toBe(true);
 			expect(s.position.y).toBeCloseTo(-30 + c.runHeight, 1);
+		});
+	});
+
+	describe("skateboard", () => {
+		const deck = { ...c, runHeight: 0.33 };
+		const roll = (
+			s: FlightState,
+			seconds: number,
+			input: InputState,
+			env: RunEnv,
+		) => {
+			let air = false;
+			for (let i = 0; i < seconds * 60; i++) {
+				const r = stepSkate(s, input, dt, deck, env);
+				s = r.state;
+				air = air || r.air === true;
+			}
+			return { s, air };
+		};
+		const board = (): FlightState => ({
+			...landRun(
+				{
+					...createFlightState({ x: 0, y: 5, z: 0 }, 0, 0),
+					velocity: { x: 0, y: 0, z: 0 },
+				},
+				0,
+				deck,
+			),
+		});
+
+		it("kicks up to cruising speed, then coasts and slowly loses speed", () => {
+			const pushed = roll(board(), 6, forward, flat(0)).s;
+			expect(pushed.airspeed).toBeGreaterThan(deck.skatePush * 0.8);
+			expect(pushed.airspeed).toBeLessThanOrEqual(deck.skatePush + 0.5);
+			const coast = roll(pushed, 3, idle, flat(0)).s;
+			expect(coast.airspeed).toBeLessThan(pushed.airspeed);
+			expect(coast.airspeed).toBeGreaterThan(pushed.airspeed * 0.6); // still rolling
+		});
+
+		it("downhill speeds you up, uphill slows you to a stop", () => {
+			const down: RunEnv = {
+				floorAt: (_x, _y, z) => z * 0.3,
+				solidAt: () => false,
+			}; // z decreases -> floor drops
+			const fast = roll(board(), 4, idle, down).s;
+			expect(fast.airspeed).toBeGreaterThan(5);
+			const up: RunEnv = {
+				floorAt: (_x, _y, z) => -z * 0.3,
+				solidAt: () => false,
+			};
+			let s = board();
+			s = { ...s, airspeed: 10 };
+			expect(roll(s, 6, idle, up).s.airspeed).toBeLessThan(1);
+		});
+
+		it("S brakes", () => {
+			const moving = { ...board(), airspeed: 12 };
+			expect(
+				roll(moving, 1, { pitch: 1, roll: 0, boost: false }, flat(0)).s
+					.airspeed,
+			).toBeLessThan(0.5);
+		});
+
+		it("Space is an ollie: up, then back down to the ground", () => {
+			const jump = roll(
+				board(),
+				0.3,
+				{ pitch: 0, roll: 0, boost: true },
+				flat(0),
+			);
+			expect(jump.air).toBe(true);
+			expect(jump.s.position.y).toBeGreaterThan(0.33 + 0.5);
+			const landed = roll(jump.s, 2, idle, flat(0)).s;
+			expect(landed.position.y).toBeCloseTo(0.33, 1);
+		});
+
+		it("launches off a crest with the slope's upward speed", () => {
+			const crest: RunEnv = {
+				floorAt: (_x, _y, z) => (z > -10 ? Math.max(0, -z * 0.5) : -20),
+				solidAt: () => false,
+			};
+			const s = { ...board(), airspeed: 20 };
+			let highest = 0;
+			let state = s;
+			for (let i = 0; i < 3 * 60; i++) {
+				state = stepSkate(state, idle, dt, deck, crest).state;
+				highest = Math.max(highest, state.position.y);
+			}
+			expect(highest).toBeGreaterThan(5); // flew up off the lip before dropping
+		});
+
+		it("stops dead against a solid wall", () => {
+			const wall: RunEnv = { floorAt: () => 0, solidAt: (_x, _y, z) => z < -8 };
+			const s = { ...board(), airspeed: 15 };
+			const hit = roll(s, 2, idle, wall).s;
+			expect(hit.position.z).toBeGreaterThan(-9);
+			expect(hit.airspeed).toBe(0);
 		});
 	});
 });

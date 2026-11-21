@@ -58,6 +58,13 @@ export const config = {
 		runStride: 1.8, // leg phase per metre
 		landCarry: 0.7, // share of horizontal speed kept when landing
 		runSprint: 1.7, // land animals: speed multiplier while Space sprints (uses the boost tank)
+		skatePush: 12, // skateboard: W kicks you up to this speed (m/s); downhill goes faster
+		skateAccel: 10, // m/s² while kicking
+		skateBrake: 20, // m/s² with S
+		skateFriction: 0.1, // 1/s rolling drag
+		skateGravity: 9.81, // m/s² along a slope (downhill speeds you up)
+		skateMax: 45, // m/s
+		skateJump: 8, // m/s ollie
 		walkRefill: 1.5, // land animals: boost tank refill multiplier while not sprinting
 		landPadTolerance: 8, // metres above/below a pad's surface that still counts as touching it
 		maxSpeed: 60,

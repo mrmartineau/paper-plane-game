@@ -36,7 +36,13 @@ import {
 	touchdownOk,
 } from "./plane/landing";
 import { createPlaneModel } from "./plane/model";
-import { landRun, type RunEnv, runTakeOff, stepRun } from "./plane/run";
+import {
+	landRun,
+	type RunEnv,
+	runTakeOff,
+	stepRun,
+	stepSkate,
+} from "./plane/run";
 import { PLANES, type PlaneId, randomPlane } from "./plane/types";
 import { createAirColumns } from "./render/airColumns";
 import { createBirdMeshes } from "./render/birdMeshes";
@@ -258,6 +264,8 @@ let running = false; // a paper animal on the ground
 let lastAnimal: AnimalChoice =
 	settings.animal === "off" ? "crane" : settings.animal;
 let runPhase = 0; // leg swing, advances with distance run
+let skateAir = false; // the skateboard is off the ground
+let flipT = 0; // seconds in the air, for the kickflip spin
 let wingPhase = 0; // crane wing flap
 let wingAmp = 0.6;
 let morphAt = -10; // when you last turned into a plane or an animal (a little pop)
@@ -288,7 +296,9 @@ function setForm() {
 		settings.animal === "off"
 			? "Paper plane"
 			: isWalker()
-				? `${name} · W run · Space sprint`
+				? PLANES[currentId()].skate
+					? `${name} · W kick · Space ollie`
+					: `${name} · W run · Space sprint`
 				: `${name} · land to run · Space to fly`,
 		time,
 	);
@@ -367,7 +377,10 @@ function update(dt: number) {
 
 	// A paper animal on the ground: run, step, climb, drop off edges, Space takes off.
 	if (running) {
-		const r = stepRun(state, i, dt, config.flight, runEnv, isWalker());
+		const r = PLANES[planeId].skate
+			? stepSkate(state, i, dt, config.flight, runEnv)
+			: stepRun(state, i, dt, config.flight, runEnv, isWalker());
+		skateAir = r.air === true;
 		state = r.state;
 		runPhase +=
 			state.airspeed *
@@ -512,6 +525,8 @@ const qa = new THREE.Quaternion();
 const qb = new THREE.Quaternion();
 const fwd = new THREE.Vector3();
 const vel = new THREE.Vector3();
+const flipQ = new THREE.Quaternion();
+const zAxis = new THREE.Vector3(0, 0, 1);
 const planeRight = new THREE.Vector3();
 const planeUp = new THREE.Vector3();
 let hudRoll = 0; // degrees, last good bank angle for the HUD
@@ -543,6 +558,14 @@ function render(alpha: number, frameDt: number) {
 		a * (Math.sin(time * 13) + 0.5 * Math.sin(time * 23)),
 	);
 	plane.mesh.quaternion.multiply(shake.setFromEuler(shakeEuler));
+	// Skateboard: a kickflip spin about its length while it's in the air.
+	flipT = skateAir ? flipT + frameDt : 0;
+	if (flipT > 0.12) {
+		const t = Math.min(1, (flipT - 0.12) / 0.5);
+		plane.mesh.quaternion.multiply(
+			flipQ.setFromAxisAngle(zAxis, easeOutBack(t) * Math.PI * 2),
+		);
+	}
 	plane.mesh.position.copy(pos);
 	const k = crash.render(alpha);
 	plane.mesh.visible = k > 0.01;

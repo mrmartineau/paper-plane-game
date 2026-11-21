@@ -13,7 +13,8 @@ export type PlaneId =
 	| "stunt"
 	| "crane"
 	| "cheetah"
-	| "dog";
+	| "dog"
+	| "skateboard";
 
 export interface PlaneType {
 	id: PlaneId;
@@ -23,6 +24,7 @@ export interface PlaneType {
 	flight: Partial<Config["flight"]>;
 	animal?: boolean; // a paper animal: lands anywhere and runs (see run.ts)
 	walker?: boolean; // land only: never flies; Space sprints
+	skate?: boolean; // rolls on momentum; Space is an ollie (see stepSkate)
 	quad?: boolean; // four legs (diagonal trot) instead of two
 	wings?: boolean; // wings flap (see model.ts)
 }
@@ -224,6 +226,63 @@ function dog(): Tri[] {
 	);
 }
 
+/** Origami skateboard: a kicked deck with grip tape and four hexagon wheels. Nose at -Z. */
+function skateboard(): Tri[] {
+	const DECK: Rgb = [0.36, 0.72, 0.76];
+	const GRIP: Rgb = [0.24, 0.27, 0.3];
+	const WHEEL: Rgb = [0.96, 0.62, 0.38];
+	const half = (lift: number, col: Rgb): Tri[] => {
+		const w = 0.24;
+		const A: P = [0, lift, -0.7];
+		const B: P = [-w, lift, -0.7];
+		const C: P = [-w, lift, 0.7];
+		const D: P = [0, lift, 0.7];
+		const N: P = [0, lift + 0.14, -1];
+		const NB: P = [-w * 0.85, lift + 0.14, -1];
+		const T: P = [0, lift + 0.14, 1];
+		const TB: P = [-w * 0.85, lift + 0.14, 1];
+		return [
+			[A, B, C, col],
+			[A, C, D, col],
+			[A, B, NB, col],
+			[A, NB, N, col],
+			[D, C, TB, col],
+			[D, TB, T, col],
+		];
+	};
+	// A wheel: hexagon ring around an axle along X, with a point on each side.
+	const wheel = (x: number, z: number): Tri[] => {
+		const out: Tri[] = [];
+		const ring = (i: number): P => {
+			const a = (i / 6) * Math.PI * 2;
+			return [x, -0.14 + Math.cos(a) * 0.13, z + Math.sin(a) * 0.13];
+		};
+		for (let i = 0; i < 6; i++) {
+			for (const side of [-0.07, 0.07])
+				out.push([ring(i), ring(i + 1), [x + side, -0.14, z], WHEEL]);
+		}
+		return out;
+	};
+	// Trucks: a thin axle block under each pair of wheels.
+	const truck = (z: number): Tri => [
+		[0, -0.02, z - 0.04],
+		[-0.3, -0.14, z],
+		[0, -0.02, z + 0.04],
+		shade(GRIP, 1.4),
+	];
+	return fold(
+		[
+			...half(0, DECK),
+			...half(0.012, GRIP).slice(0, 2),
+			...wheel(-0.32, -0.55),
+			...wheel(-0.32, 0.55),
+			truck(-0.55),
+			truck(0.55),
+		],
+		[],
+	);
+}
+
 export const PLANES: Record<PlaneId, PlaneType> = {
 	dart: {
 		id: "dart",
@@ -331,6 +390,16 @@ export const PLANES: Record<PlaneId, PlaneType> = {
 			runSprint: 1.7,
 			runHeight: 0.72,
 		},
+	},
+	skateboard: {
+		id: "skateboard",
+		name: "Paper skateboard",
+		blurb: "Rolls on momentum. Space ollies",
+		tris: skateboard(),
+		animal: true,
+		walker: true,
+		skate: true,
+		flight: { runTurn: 2.4, runHeight: 0.33, runStep: 0.5 },
 	},
 };
 

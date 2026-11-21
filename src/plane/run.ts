@@ -20,7 +20,11 @@ export interface RunEnv {
 	solidAt: (x: number, y: number, z: number) => boolean;
 }
 
-export type RunResult = { state: FlightState; mode: "run" | "fly" };
+export type RunResult = {
+	state: FlightState;
+	mode: "run" | "fly";
+	air?: boolean;
+};
 
 const FALL_GRAVITY = 22; // m/s², a land animal dropping off a ledge (snappy, paper-light)
 
@@ -166,4 +170,82 @@ function standing(
 	t.orientation = fromEuler(yaw, c.restPitch, 0);
 	t.velocity = { x: -Math.sin(yaw) * speed, y: 0, z: -Math.cos(yaw) * speed };
 	return { ...t, fuel: s.fuel, boostLocked: s.boostLocked };
+}
+
+/**
+ * A paper skateboard: rolls on momentum. W kicks you up to a cruising speed, S brakes,
+ * slopes speed you up or slow you down, A D carve (slowly at a standstill). Space is an
+ * ollie. Crests launch you with the slope's upward speed; solid things stop you dead.
+ * Never flies off on its own, just ballistic hops.
+ */
+export function stepSkate(
+	s: FlightState,
+	input: InputState,
+	dt: number,
+	c: Flight,
+	env: RunEnv,
+): RunResult {
+	const yaw = heading(s.orientation);
+	const py = s.position.y;
+	const footY = py - c.runHeight;
+	const here = env.floorAt(s.position.x, py, s.position.z);
+	const onGround = footY - here <= 0.12;
+
+	let speed = s.airspeed;
+	if (onGround) {
+		const push = Math.max(0, -input.pitch);
+		if (push > 0 && speed < c.skatePush) speed += c.skateAccel * push * dt; // kick
+		if (input.pitch > 0.05) speed -= c.skateBrake * dt;
+		speed -= speed * c.skateFriction * dt;
+		// Slope along the heading: downhill speeds you up, uphill slows you.
+		const ahead = env.floorAt(
+			s.position.x - Math.sin(yaw) * 1.5,
+			py,
+			s.position.z - Math.cos(yaw) * 1.5,
+		);
+		speed -= ((ahead - here) / 1.5) * c.skateGravity * dt;
+		speed = Math.min(c.skateMax, Math.max(0, speed));
+	}
+	const carve = onGround ? 0.25 + 0.75 * Math.min(1, speed / 10) : 0.7;
+	const newYaw = yaw - input.roll * c.runTurn * dt * carve;
+
+	let x = s.position.x - Math.sin(newYaw) * speed * dt;
+	let z = s.position.z - Math.cos(newYaw) * speed * dt;
+	let floor = env.floorAt(x, py, z);
+	const maxRise = c.runStep + speed * dt * c.runSlope;
+	if (
+		floor - footY > maxRise ||
+		env.solidAt(x, floor + c.runHeight, z) ||
+		env.solidAt(x, floor + 0.3, z)
+	) {
+		x = s.position.x; // bonk: stopped dead
+		z = s.position.z;
+		speed = 0;
+		floor = env.floorAt(x, py, z);
+	}
+
+	const launched = onGround && input.boost; // ollie
+	const wantY = floor + c.runHeight;
+	let y: number;
+	let vy: number;
+	let air = false;
+	if (launched || footY - floor > 0.1) {
+		air = true;
+		vy = (launched ? c.skateJump : s.velocity.y) - FALL_GRAVITY * dt;
+		y = py + vy * dt;
+		if (y <= wantY && vy <= 0) {
+			y = wantY; // landed
+			vy = 0;
+			air = false;
+		}
+	} else {
+		y = Math.max(wantY - 0.2, py + (wantY - py) * Math.min(1, 18 * dt));
+		// Carry the slope's vertical speed, so a crest launches you.
+		vy = Math.min(speed * 0.8, Math.max(-speed, (floor - here) / dt));
+	}
+
+	const next = standing(s, x, y, z, newYaw, speed, c);
+	next.velocity.y = vy;
+	next.fuel = 1;
+	return { state: next, mode: "run", air };
 }
