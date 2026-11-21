@@ -382,11 +382,16 @@ function update(dt: number) {
 			: stepRun(state, i, dt, config.flight, runEnv, isWalker());
 		skateAir = r.air === true;
 		state = r.state;
-		runPhase +=
-			state.airspeed *
-			dt *
-			config.flight.runStride *
-			(state.boosting ? 1.8 : 1); // sprinting: legs very fast
+		{
+			// Legs cycle with the signed speed along the heading, so they reverse when walking backwards.
+			const yawNow = heading(state.orientation);
+			const along = -(
+				state.velocity.x * Math.sin(yawNow) +
+				state.velocity.z * Math.cos(yawNow)
+			);
+			runPhase +=
+				along * dt * config.flight.runStride * (state.boosting ? 1.8 : 1); // sprinting: legs very fast
+		}
 		if (r.mode === "fly") {
 			running = false;
 			assistOffUntil = time + config.flight.assistCooldown;
