@@ -61,6 +61,7 @@ import { createWorldMeshes } from "./render/world";
 import { clock, createCoursePanel, pointTo } from "./ui/coursePanel";
 import { setupHelp } from "./ui/help";
 import { createHud } from "./ui/hud";
+import { createMarkers } from "./ui/markers";
 import { createMenu } from "./ui/menu";
 import { createPhotoMode } from "./ui/photoMode";
 import { createRadar } from "./ui/radar";
@@ -236,6 +237,7 @@ function spawnBeside(x: number, z: number, q: Quat): FlightState {
 	);
 }
 const radar = createRadar();
+const markers = createMarkers(camera);
 mp.setOnline(settings.online);
 input.showFire(settings.online);
 const chase = createChaseCam(camera, groundAt);
@@ -756,7 +758,8 @@ function render(alpha: number, frameDt: number) {
 	);
 
 	mp.render(time);
-	radar.update(pos, heading(state.orientation), mp.peers());
+	const peers = mp.peers();
+	radar.update(pos, heading(state.orientation), peers);
 	hoopMeshes.update(nearbyHoops, time, hoopPasses);
 	vineMeshes.update(nearbyVines, time);
 	birdMeshes.update(
@@ -783,6 +786,7 @@ function render(alpha: number, frameDt: number) {
 		nextRing ? pointTo(pos.x, pos.z, bearing, nextRing.x, nextRing.z) : "",
 		padPointer(),
 	);
+	markers.update(pos, peers); // after the camera has moved this frame
 	sky.update(camera, light.horizon, light.zenith, light.night);
 	renderer.render(scene, camera);
 }

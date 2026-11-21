@@ -122,5 +122,6 @@ Pulled forward because they were one-liners: sun shadow that follows the plane, 
 - [x] HUD: players online and hits. Menu: Fly with others on/off
 - [x] Radar (top-right): other players as dots in their colour, you in the middle facing up; hollow = below you, dash = above (`src/ui/radar.ts`)
 - [x] Spawn next to another player: on joining and after a crash (60–140 m away, same heading)
+- [x] Find and follow: a ring + distance around players in view, an edge arrow + distance when they are off-screen, the nearest one bigger and pulsing; a fading dot trail behind each player (`src/ui/markers.ts`, `src/net/multiplayer.ts`)
 - [ ] **Done when:** two people on the same seed see each other fly smoothly and can shoot each other down (you, after deploy)
 

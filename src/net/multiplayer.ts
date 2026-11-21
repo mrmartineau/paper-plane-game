@@ -16,6 +16,16 @@ import { CRASHED, type PlayerState, type Vec } from "./protocol";
 import { createRemotes, type Pose } from "./remotes";
 
 const MAX_SHOTS = 128;
+const TRAIL_SECS = 4; // how far back a player's trail reaches
+const TRAIL_GAP = 0.1; // seconds between trail dots
+const TRAIL_MAX = 24 * Math.ceil(TRAIL_SECS / TRAIL_GAP + 1);
+
+interface Dot {
+	x: number;
+	y: number;
+	z: number;
+	t: number;
+}
 
 interface Remote {
 	model: PlaneModel;
@@ -56,7 +66,24 @@ export function createMultiplayer(
 	balls.count = 0;
 	scene.add(balls);
 
+	// A trail of little paper dots behind each player, in their colour, shrinking with age.
+	const trailMesh = new THREE.InstancedMesh(
+		new THREE.IcosahedronGeometry(1, 0),
+		new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.85 }),
+		TRAIL_MAX,
+	);
+	trailMesh.frustumCulled = false;
+	trailMesh.count = 0;
+	trailMesh.instanceColor = new THREE.InstancedBufferAttribute(
+		new Float32Array(TRAIL_MAX * 3),
+		3,
+	);
+	scene.add(trailMesh);
+	const trails = new Map<number, Dot[]>();
+	const trailColour = new THREE.Color();
+
 	function drop(id: number) {
+		trails.delete(id);
 		remotes.remove(id);
 		const r = meshes.get(id);
 		if (!r) return;
@@ -115,12 +142,19 @@ export function createMultiplayer(
 			return (link?.id != null && link.players.get(link.id)?.score) || 0;
 		},
 		/** Other players now: position and colour (for the radar). */
-		peers(): { x: number; y: number; z: number; colour: string }[] {
+		peers(): {
+			id: number;
+			x: number;
+			y: number;
+			z: number;
+			colour: string;
+		}[] {
 			const out = [];
 			for (const id of remotes.ids()) {
 				const pose = remotes.sample(id, clock);
 				if (!pose || pose.f & CRASHED) continue;
 				out.push({
+					id,
 					x: pose.p[0],
 					y: pose.p[1],
 					z: pose.p[2],
@@ -190,7 +224,35 @@ export function createMultiplayer(
 				r.ball.position.fromArray(pose.p);
 				r.model.mesh.quaternion.fromArray(pose.q);
 				r.model.flutter(time, 0.6);
+
+				// Trail: drop a dot every so often; forget old ones (and all of them after a crash).
+				const dots = trails.get(id) ?? [];
+				trails.set(id, dots);
+				if (crashed) dots.length = 0;
+				else if (!dots.length || clock - dots[dots.length - 1].t >= TRAIL_GAP)
+					dots.push({ x: pose.p[0], y: pose.p[1], z: pose.p[2], t: clock });
+				while (dots.length && clock - dots[0].t > TRAIL_SECS) dots.shift();
 			}
+			let n = 0;
+			for (const [id, dots] of trails) {
+				trailColour.set(link?.players.get(id)?.colour ?? "#ffffff");
+				for (const d of dots) {
+					if (n >= TRAIL_MAX) break;
+					const k = 1 - (clock - d.t) / TRAIL_SECS; // 1 = fresh, 0 = gone
+					tmp.compose(
+						at.set(d.x, d.y, d.z),
+						q.identity(),
+						one.set(1, 1, 1).multiplyScalar(0.25 + 0.75 * k),
+					);
+					trailMesh.setMatrixAt(n, tmp);
+					trailMesh.setColorAt(n, trailColour);
+					n++;
+				}
+			}
+			trailMesh.count = n;
+			trailMesh.instanceMatrix.needsUpdate = true;
+			if (trailMesh.instanceColor) trailMesh.instanceColor.needsUpdate = true;
+			one.set(1, 1, 1);
 			balls.count = Math.min(shots.length, MAX_SHOTS);
 			for (let i = 0; i < balls.count; i++) {
 				const s = shots[i];
