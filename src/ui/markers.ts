@@ -19,7 +19,10 @@ interface Marker {
 	label: HTMLElement;
 }
 
-const EDGE = 44; // px kept clear around the screen edge for arrows
+// Space kept clear around the screen edge for arrows. On touch screens, keep out from under
+// the pause button and radar (top) and the boost and fire buttons (bottom).
+const coarse = matchMedia("(pointer: coarse)").matches;
+const EDGE = { l: 44, r: 44, t: coarse ? 84 : 44, b: coarse ? 104 : 44 };
 
 export function createMarkers(camera: THREE.PerspectiveCamera) {
 	const root = document.getElementById("markers") as HTMLElement;
@@ -78,7 +81,11 @@ export function createMarkers(camera: THREE.PerspectiveCamera) {
 				let sx = (ndc.x * 0.5 + 0.5) * w;
 				let sy = (-ndc.y * 0.5 + 0.5) * h;
 				const inView =
-					!behind && sx > EDGE && sx < w - EDGE && sy > EDGE && sy < h - EDGE;
+					!behind &&
+					sx > EDGE.l &&
+					sx < w - EDGE.r &&
+					sy > EDGE.t &&
+					sy < h - EDGE.b;
 				let angle = 0;
 				if (!inView) {
 					// Aim from the middle of the screen toward the player, clamp to the edge.
@@ -90,8 +97,10 @@ export function createMarkers(camera: THREE.PerspectiveCamera) {
 					}
 					if (Math.abs(dx) < 1 && Math.abs(dy) < 1) dy = h; // dead behind: point down
 					const k = Math.min(
-						(w / 2 - EDGE) / (Math.abs(dx) || 1e-6),
-						(h / 2 - EDGE) / (Math.abs(dy) || 1e-6),
+						(dx > 0 ? w - EDGE.r - w / 2 : w / 2 - EDGE.l) /
+							(Math.abs(dx) || 1e-6),
+						(dy > 0 ? h - EDGE.b - h / 2 : h / 2 - EDGE.t) /
+							(Math.abs(dy) || 1e-6),
 					);
 					sx = w / 2 + dx * k;
 					sy = h / 2 + dy * k;
