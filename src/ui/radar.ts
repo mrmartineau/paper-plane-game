@@ -11,6 +11,7 @@ export interface Blip {
 
 const SIZE = 120;
 const RANGE = 1500; // metres from centre to rim
+const LABELS_MAX = 3; // show distances only when this few players are on the radar
 const LEVEL = 40; // metres of height difference that still counts as "same height"
 
 export function createRadar() {
@@ -79,6 +80,18 @@ export function createRadar() {
 				else {
 					ctx.fill();
 					ctx.stroke();
+				}
+				if (blips.length <= LABELS_MAX) {
+					// Distance (flat, in metres), on the side facing the middle so it stays inside.
+					ctx.fillStyle = "rgba(60, 50, 40, 0.95)";
+					ctx.font = "600 10px system-ui, sans-serif";
+					ctx.textAlign = px > c ? "right" : "left";
+					ctx.textBaseline = "middle";
+					ctx.fillText(
+						d < 1000 ? `${Math.round(d)} m` : `${(d / 1000).toFixed(1)} km`,
+						px + (px > c ? -8 : 8),
+						py + 1,
+					);
 				}
 				if (dy > LEVEL) {
 					ctx.beginPath(); // above: a dash over the dot
