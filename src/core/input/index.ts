@@ -11,6 +11,8 @@ export interface InputState {
 	pitch: number;
 	roll: number;
 	boost: boolean;
+	/** Throw a paper ball (multiplayer). */
+	fire?: boolean;
 }
 
 export function createInput(canvas: HTMLElement) {
@@ -25,7 +27,17 @@ export function createInput(canvas: HTMLElement) {
 		el("stick-base"),
 		el("boost-btn"),
 	);
-	const state: InputState = { pitch: 0, roll: 0, boost: false };
+	const state: InputState = { pitch: 0, roll: 0, boost: false, fire: false };
+	// Touch fire button: held = keep throwing (the cooldown spaces them out).
+	let touchFire = false;
+	const fireBtn = el("fire-btn");
+	fireBtn.addEventListener("pointerdown", () => {
+		touchFire = true;
+	});
+	for (const ev of ["pointerup", "pointercancel", "pointerleave"])
+		fireBtn.addEventListener(ev, () => {
+			touchFire = false;
+		});
 
 	/** Which steering a touch device uses: tilt if allowed, otherwise the stick. */
 	const touchMode = () => {
@@ -47,6 +59,10 @@ export function createInput(canvas: HTMLElement) {
 
 	return {
 		state,
+		/** Show the touch fire button (touch devices, while online). */
+		showFire(on: boolean) {
+			fireBtn.hidden = !(on && touchUi);
+		},
 		mouse,
 		tilt,
 		gamepad,
@@ -76,6 +92,7 @@ export function createInput(canvas: HTMLElement) {
 				Math.min(1, pick(k.roll, gamepad.roll, t.roll, mouse.roll) * s),
 			);
 			state.boost = k.boost || mouse.boost || gamepad.boost || touch.boost;
+			state.fire = k.fire || mouse.fire || gamepad.fire || touchFire;
 			return state;
 		},
 	};

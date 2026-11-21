@@ -18,6 +18,7 @@ export function createKeyboard() {
 				pitch: axis(["KeyW", "ArrowUp"], ["KeyS", "ArrowDown"]),
 				roll: axis(["KeyA", "ArrowLeft"], ["KeyD", "ArrowRight"]),
 				boost: down.has("Space"),
+				fire: down.has("KeyF"),
 			};
 		},
 	};

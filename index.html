@@ -122,7 +122,11 @@
         right: 16px; bottom: 16px; width: 76px; height: 76px; border-radius: 50%;
         font-size: 13px; letter-spacing: 0.04em; touch-action: none; user-select: none;
       }
-      #boost-btn[hidden], #stick-base[hidden], #stick-knob[hidden] { display: none; }
+      #fire-btn {
+        right: 104px; bottom: 16px; width: 60px; height: 60px; border-radius: 50%;
+        font-size: 12px; letter-spacing: 0.04em; touch-action: none; user-select: none;
+      }
+      #fire-btn[hidden], #boost-btn[hidden], #stick-base[hidden], #stick-knob[hidden] { display: none; }
       #stick-base, #stick-knob {
         position: fixed; left: 0; top: 0; border-radius: 50%; pointer-events: none;
         margin: -60px 0 0 -60px; width: 120px; height: 120px;
@@ -202,6 +206,7 @@
   <body>
     <button id="pause-btn" class="corner-btn" type="button" aria-label="Pause and settings" title="Pause (Esc)">❚❚</button>
     <button id="boost-btn" class="corner-btn" type="button" hidden>BOOST</button>
+    <button id="fire-btn" class="corner-btn" type="button" hidden>FIRE</button>
     <div id="stick-base" hidden></div>
     <div id="stick-knob" hidden></div>
 
@@ -215,11 +220,12 @@
           <dt><kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd></dt><dd>Same as W S A D</dd>
           <dt><kbd>S</kbd> held</dt><dd>Loop</dd>
           <dt><kbd>Space</kbd></dt><dd>Boost: a rocket. Gravity off, fly anywhere</dd>
+          <dt><kbd>F</kbd></dt><dd>Throw a paper ball at other planes</dd>
           <dt><kbd>? H</kbd></dt><dd>Controls card</dd>
           <dt><kbd>T</kbd></dt><dd>Turn into your chosen form and back</dd>
           <dt><kbd>U</kbd></dt><dd>Show / hide flight info</dd>
           <dt><kbd>O</kbd></dt><dd>Photo mode</dd>
-          <dt>Mouse</dt><dd>Click to steer, left button boosts, Esc lets go</dd>
+          <dt>Mouse</dt><dd>Click to steer, left button boosts, right button throws, Esc lets go</dd>
         </dl>
       <p><span class="swatch" style="background: var(--warm)"></span>Warm confetti rises: fly in to climb.</p>
       <p><span class="swatch" style="background: var(--cool)"></span>Blue confetti sinks: it pushes you down.</p>
@@ -227,6 +233,7 @@
       <p>Turn into something: pick under Turn into in the menu (or press T). The skateboard rolls on momentum: W kicks, S brakes, A D carve, slopes speed you up or slow you down, crests launch you, and Space is an ollie with a kickflip. <br>The crane flies like a glider and lands and runs; Space takes off. The cheetah and dog stay on the ground: W runs, S brakes and then walks backwards, A D turn, and Space sprints (legs very fast, uses the boost tank). Animals step up small ledges and are stopped by steep walls and solid things.</p>
       <p>Cities have skyscrapers with streets to fly down, skybridges, and a gate at the edge you can fly through. Windows glow at night.</p>
       <p>Land on a runway (floating mountains) or an H pad (small islands): fly near one, a little above it, and let go. It pulls you in. Hold boost to pull away. The top panel points to the nearest pad. Landing refuels your boost; Space takes off.</p>
+      <p>Other players on the same world seed fly with you. The default seed is the public sky; copy the link to fly with friends in your own world. Hit a plane with a paper ball and it crumples; you get a hit. Turn it off with Fly with others.</p>
       <p>Wind pushes you along. Where it blows up a hill, it lifts you (ridge lift).</p>
       <p>Find a red start gate with a striped ribbon and fly through it to start a course. Rings turn green as you pass them. Your best run comes back as a ghost.</p>
       <p>Fly through the paper hoops (they turn gold) and the sandstone arches. Dodge the trees, rocks, floating islands and paper birds.</p>
@@ -289,6 +296,7 @@
       <label>Camera shake <input type="checkbox" name="shake" /></label>
 
       <h3>World</h3>
+      <label>Fly with others <input type="checkbox" name="online" /></label>
       <label>Seed <input type="text" name="seed" spellcheck="false" autocomplete="off" /></label>
       <div class="row">
         <button type="button" data-action="fly">Fly this seed</button>
@@ -331,6 +339,8 @@
           <dt>Top speed</dt><dd data-hud="topSpeed">0 km/h</dd>
           <dt>Crashes</dt><dd data-hud="crashes">0</dd>
           <dt>Wind</dt><dd data-hud="wind">0 m/s</dd>
+          <dt>Online</dt><dd data-hud="online">Alone</dd>
+          <dt>Hits</dt><dd data-hud="hits">0</dd>
         </dl>
       </section>
     </div>
@@ -341,6 +351,7 @@
         <dt><kbd>W</kbd> <kbd>S</kbd></dt><dd>Nose down / up</dd>
         <dt><kbd>A</kbd> <kbd>D</kbd></dt><dd>Bank left / right</dd>
         <dt><kbd>Space</kbd></dt><dd>Boost</dd>
+        <dt><kbd>F</kbd></dt><dd>Throw a paper ball</dd>
         <dt>Click</dt><dd>Steer with the mouse</dd>
         <dt><kbd>Esc</kbd></dt><dd>Pause, settings, help</dd>
       </dl>

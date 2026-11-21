@@ -18,6 +18,8 @@ import { decodeGhost, encodeGhost } from "./courses/ghost";
 import { passedThrough } from "./courses/rings";
 import { type Best, createRun } from "./courses/run";
 import { createDevJumps, createDevPanel, type Telemetry } from "./debug";
+import { createMultiplayer } from "./net/multiplayer";
+import { BOOST, CRASHED, RUNNING } from "./net/protocol";
 import { createCrash, respawnAt } from "./plane/crash";
 import {
 	axes,
@@ -197,6 +199,30 @@ function usePlane(id: PlaneId) {
 scene.add(plane.mesh);
 const input = createInput(renderer.domElement);
 const crash = createCrash(scene, groundAt, env.solidAt);
+// Multiplayer: everyone on this seed shares a room. A paper ball that hits you crumples you.
+const mp = createMultiplayer(
+	scene,
+	seed,
+	{ groundAt, solidAt: features.solidAt },
+	{
+		onHit: () => {
+			if (crash.phase !== "flying") return;
+			running = false;
+			parked = null;
+			crash.start(state);
+			tracker.crash();
+			sound.crumple();
+			coursePanel.flash("Hit by a paper ball!", time);
+		},
+		onScore: (_id, mine) => {
+			if (!mine) return;
+			sound.chime(1.2);
+			coursePanel.flash("You hit a plane!", time);
+		},
+	},
+);
+mp.setOnline(settings.online);
+input.showFire(settings.online);
 const chase = createChaseCam(camera, groundAt);
 const tracker = createStats();
 const hud = createHud(tracker.stats);
@@ -368,6 +394,31 @@ function update(dt: number) {
 	if (paused || photo.active) return;
 	bench?.steer(i, telemetry.altitude, telemetry.climb, state.airspeed);
 	prev = state;
+	// Throw a paper ball (flying only), then share where you are.
+	if (i.fire && !running && crash.phase === "flying") {
+		const f = axes(state.orientation).forward;
+		const v = state.velocity;
+		const p = state.position;
+		if (mp.shoot([p.x, p.y, p.z], [f.x, f.y, f.z], [v.x, v.y, v.z]))
+			sound.pop();
+	}
+	{
+		const p = state.position;
+		const o = state.orientation;
+		mp.step(
+			dt,
+			{
+				p: [p.x, p.y, p.z],
+				q: [o.x, o.y, o.z, o.w],
+				type: planeId,
+				f:
+					(state.boosting ? BOOST : 0) |
+					(running ? RUNNING : 0) |
+					(crash.phase === "rolling" ? CRASHED : 0),
+			},
+			crash.phase === "flying",
+		);
+	}
 	const fresh = crash.update(dt);
 	if (fresh) place(fresh);
 	if (crash.phase === "rolling") {
@@ -679,10 +730,13 @@ function render(alpha: number, frameDt: number) {
 			),
 			roll: hudRoll,
 			wind: wind.at(time),
+			online: mp.count,
+			hits: mp.score,
 		},
 		time,
 	);
 
+	mp.render(time);
 	hoopMeshes.update(nearbyHoops, time, hoopPasses);
 	vineMeshes.update(nearbyVines, time);
 	birdMeshes.update(
@@ -739,6 +793,10 @@ const menu = createMenu({
 		return PLANES[flyPlane].name;
 	},
 	onForm: () => setForm(),
+	onOnline: (on) => {
+		mp.setOnline(on);
+		input.showFire(on);
+	},
 	onResume: () => {
 		if (!isTouchDevice()) renderer.domElement.requestPointerLock();
 	},

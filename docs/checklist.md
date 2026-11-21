@@ -100,7 +100,7 @@ Pulled forward because they were one-liners: sun shadow that follows the plane, 
 - [x] Adaptive (auto quality): p90 > 20 ms for 3 s steps the pixel ratio down, then the tier (stands in for a separate startup benchmark)
 - [x] Chunk generation in a Web Worker (done early, in Phase 2: it was needed)
 - [x] Pause menu (button, Esc, P, gamepad Start, mouse release): quality, controls, invert, sensitivity, tilt level, seed (fly / new / copy link); saved in localStorage (`src/ui/menu.ts`, `src/core/settings.ts`). Audio settings come with audio in Phase 6
-- [ ] **Done when:** 60fps recent iPhone (medium), 30fps+ mid Android (low), both control schemes feel good — needs a real-device check (you)
+- [x] **Done when:** 60fps recent iPhone (medium), 30fps+ mid Android (low), both control schemes feel good — checked on a phone: tilt and touch stick both work, touch is better
 
 ## Phase 6: polish
 
@@ -111,3 +111,14 @@ Pulled forward because they were one-liners: sun shadow that follows the plane, 
 - [x] PWA manifest + icons (192, 512, maskable, SVG) + Apple touch icon, full-screen display. No offline service worker yet
 - [x] `?bench` scripted flight with frame-time stats
 - [x] Cloudflare deploy set up (Workers static assets via `@cloudflare/vite-plugin` + `wrangler.jsonc`, GitHub Actions deploy + safe-chain security workflows; `wrangler deploy --dry-run` passes). Not deployed: needs repo secrets and a push (you)
+
+## Multiplayer
+
+- [x] Room server: a Cloudflare Durable Object per world seed (`src/worker/index.ts`), WebSocket Hibernation, ids + paper colours, rate limits, cap 24 players; room rules in `src/net/room.ts`
+- [x] Message format with checks on everything players send (`src/net/protocol.ts`)
+- [x] Client link with reconnect backoff; solo play when the server is down (`src/net/client.ts`)
+- [x] Other players drawn 100 ms behind, blended between updates, tinted with their colour; a paper ball when they crash (`src/net/remotes.ts`, `src/net/multiplayer.ts`)
+- [x] Paper-ball shots: F, right mouse, gamepad X/RB, touch FIRE; the hit plane crumples, the shooter gets a hit (`src/plane/shots.ts`)
+- [x] HUD: players online and hits. Menu: Fly with others on/off
+- [ ] **Done when:** two people on the same seed see each other fly smoothly and can shoot each other down (you, after deploy)
+

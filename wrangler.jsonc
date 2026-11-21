@@ -3,12 +3,19 @@
 	"name": "paper-plane",
 	"compatibility_date": "2026-11-20",
 	"compatibility_flags": ["nodejs_compat"],
-	// Static-assets-only site (no Worker entry). @cloudflare/vite-plugin
-	// populates the assets directory from the client build at build time.
+	// The Worker only handles /ws/<room> (multiplayer). Everything else is static files.
+	"main": "src/worker/index.ts",
+	// @cloudflare/vite-plugin fills the assets directory from the client build.
 	// SPA fallback returns index.html for unknown paths.
 	"assets": {
-		"not_found_handling": "single-page-application"
+		"not_found_handling": "single-page-application",
+		"run_worker_first": ["/ws/*"]
 	},
+	// One Durable Object per room (world seed).
+	"durable_objects": {
+		"bindings": [{ "name": "ROOMS", "class_name": "Room" }]
+	},
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }],
 	"observability": {
 		"enabled": true
 	}

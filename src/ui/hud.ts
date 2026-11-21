@@ -18,6 +18,9 @@ export interface HudInfo {
 	pitch: number; // degrees, nose up > 0
 	roll: number; // degrees, right wing down > 0
 	wind: { x: number; z: number }; // m/s, world space
+	/** Multiplayer: players in the room (0 = flying alone) and your hits. */
+	online: number;
+	hits: number;
 }
 
 const PX_PER_DEG = 2.4; // compass tape
@@ -171,6 +174,8 @@ export function createHud(stats: Stats) {
 		landings: field("landings"),
 		plane: field("plane"),
 		wind: field("wind"),
+		online: field("online"),
+		hits: field("hits"),
 	};
 
 	let lastText = -Infinity;
@@ -248,6 +253,8 @@ export function createHud(stats: Stats) {
 			set(out.hoops, `${stats.hoops}`);
 			set(out.landings, `${stats.landings}`);
 			set(out.plane, stats.plane);
+			set(out.online, info.online ? `${info.online} flying` : "Alone");
+			set(out.hits, `${info.hits}`);
 			// Arrow: where the wind blows, relative to where you're heading.
 			const windBearing =
 				(Math.atan2(info.wind.x, -info.wind.z) * 180) / Math.PI;

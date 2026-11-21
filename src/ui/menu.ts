@@ -21,6 +21,7 @@ export interface MenuHooks {
 	onPlane(choice: Settings["plane"]): string; // returns the name of the plane now flying
 	planeName(): string;
 	onForm(): void; // paper animal on/off
+	onOnline(on: boolean): void;
 	seed: string;
 }
 
@@ -111,6 +112,13 @@ export function createMenu(hooks: MenuHooks) {
 	shake.addEventListener("change", () => {
 		settings.cameraShake = shake.checked;
 		saveSettings();
+	});
+	const online = $<HTMLInputElement>("[name=online]");
+	online.checked = settings.online;
+	online.addEventListener("change", () => {
+		settings.online = online.checked;
+		saveSettings();
+		hooks.onOnline(online.checked);
 	});
 	seedInput.value = hooks.seed;
 	tierLabel.textContent = hooks.onQuality(settings.quality);

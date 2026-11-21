@@ -141,6 +141,10 @@ export function createSound() {
 				bell(t + i * 0.12, 660 * p, 0.16);
 			});
 		},
+		/** A soft paper "thup" when you throw a ball. */
+		pop() {
+			if (ctx) burst(ctx.currentTime, 900 + Math.random() * 400, 3, 0.12, 0.06);
+		},
 		crumple() {
 			if (!ctx) return;
 			const t = ctx.currentTime;

@@ -1,9 +1,16 @@
 import { config } from "../../config";
 
 // Pointer lock + relative movement drive a virtual stick that drifts back to centre.
-// Mouse forward pushes the nose down (same as W). Left button boosts while locked.
+// Mouse forward pushes the nose down (same as W). Left button boosts while locked, right fires.
 export function createMouse(canvas: HTMLElement) {
-	const m = { pitch: 0, roll: 0, boost: false, locked: false, update };
+	const m = {
+		pitch: 0,
+		roll: 0,
+		boost: false,
+		fire: false,
+		locked: false,
+		update,
+	};
 
 	canvas.addEventListener("click", () => {
 		if (!m.locked && !document.body.classList.contains("photo"))
@@ -15,6 +22,7 @@ export function createMouse(canvas: HTMLElement) {
 			m.pitch = 0;
 			m.roll = 0;
 			m.boost = false;
+			m.fire = false;
 		}
 	});
 	document.addEventListener("mousemove", (e) => {
@@ -25,9 +33,14 @@ export function createMouse(canvas: HTMLElement) {
 	});
 	document.addEventListener("mousedown", (e) => {
 		if (m.locked && e.button === 0) m.boost = true;
+		if (m.locked && e.button === 2) m.fire = true; // right button throws a paper ball
 	});
 	document.addEventListener("mouseup", (e) => {
 		if (e.button === 0) m.boost = false;
+		if (e.button === 2) m.fire = false;
+	});
+	document.addEventListener("contextmenu", (e) => {
+		if (m.locked) e.preventDefault();
 	});
 
 	function update(dt: number) {

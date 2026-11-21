@@ -21,6 +21,7 @@ export interface Settings {
 	boostSeconds: number; // a full tank lasts this long (3 .. 15)
 	cameraShake: boolean;
 	plane: PlaneId | "random"; // random = a new one every start
+	online: boolean; // fly with other players on the same seed
 	animal: AnimalChoice; // what you turn into: crane (flies and runs), cheetah / dog (run), skateboard (rolls)
 }
 
@@ -37,6 +38,7 @@ const DEFAULTS: Settings = {
 	cameraShake: true,
 	plane: "random",
 	animal: "off",
+	online: true,
 };
 
 const saved = storage.get<Record<string, unknown>>("settings", {});
