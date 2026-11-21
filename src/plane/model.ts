@@ -14,6 +14,8 @@ export interface PlaneModel {
 	setType(id: PlaneId): void;
 	/** Swing the legs (paper animals): `phase` advances as it runs; `amount` 1 = running, 0 = legs tucked for flight. */
 	runPose(phase: number, amount: number): void;
+	/** Flap the wings of a paper animal: angle = bias + amp * sin(phase), radians, up is positive. */
+	flap(phase: number, amp: number, bias: number): void;
 }
 
 function foldGeometry(tris: Tri[]): THREE.BufferGeometry {
@@ -47,6 +49,7 @@ export function createPlaneModel(id: PlaneId): PlaneModel {
 	mesh.castShadow = true;
 	mesh.scale.setScalar(config.plane.scale);
 
+	let currentType = id;
 	// Which vertices are wing tips (the outer part of the span), so flutter can move them.
 	let tips: { i: number; y: number; side: number }[] = [];
 	const findTips = () => {
@@ -91,9 +94,38 @@ export function createPlaneModel(id: PlaneId): PlaneModel {
 	};
 	findLegs();
 
+	// Wing vertices of a paper animal (outside the body, above the legs), which flap about the shoulder.
+	const HINGE_Y = 0.2;
+	let wings: { i: number; x: number; y: number; side: number }[] = [];
+	const findWings = () => {
+		wings = [];
+		if (!PLANES[currentType].animal) return;
+		const attr = mesh.geometry.getAttribute(
+			"position",
+		) as THREE.BufferAttribute;
+		const col = mesh.geometry.getAttribute("color") as THREE.BufferAttribute;
+		for (let i = 0; i < attr.count; i++) {
+			const isLeg =
+				Math.abs(col.getX(i) - LEG[0]) +
+					Math.abs(col.getY(i) - LEG[1]) +
+					Math.abs(col.getZ(i) - LEG[2]) <
+				0.02;
+			if (!isLeg && Math.abs(attr.getX(i)) > 0.11 && attr.getY(i) > 0.15) {
+				wings.push({
+					i,
+					x: Math.abs(attr.getX(i)),
+					y: attr.getY(i) - HINGE_Y,
+					side: Math.sign(attr.getX(i)),
+				});
+			}
+		}
+	};
+	findWings();
+
 	return {
 		mesh,
 		flutter(time, speed01) {
+			if (wings.length > 0) return; // animals flap instead (see flap)
 			const attr = mesh.geometry.getAttribute(
 				"position",
 			) as THREE.BufferAttribute;
@@ -107,8 +139,24 @@ export function createPlaneModel(id: PlaneId): PlaneModel {
 			const old = mesh.geometry;
 			mesh.geometry = foldGeometry(PLANES[next].tris);
 			old.dispose();
+			currentType = next;
 			findTips();
 			findLegs();
+			findWings();
+		},
+		flap(phase, amp, bias) {
+			if (wings.length === 0) return;
+			const attr = mesh.geometry.getAttribute(
+				"position",
+			) as THREE.BufferAttribute;
+			const a = bias + amp * Math.sin(phase);
+			const c = Math.cos(a);
+			const s = Math.sin(a);
+			for (const w of wings) {
+				attr.setX(w.i, w.side * (w.x * c - w.y * s));
+				attr.setY(w.i, HINGE_Y + w.x * s + w.y * c);
+			}
+			attr.needsUpdate = true;
 		},
 		runPose(phase, amount) {
 			if (legs.length === 0) return;

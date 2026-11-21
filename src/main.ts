@@ -252,6 +252,8 @@ function place(s: FlightState) {
 let paused = false;
 let running = false; // a paper animal on the ground
 let runPhase = 0; // leg swing, advances with distance run
+let wingPhase = 0; // crane wing flap
+let wingAmp = 0.6;
 let morphAt = -10; // when you last turned into a plane or an animal (a little pop)
 const easeOutBack = (x: number) =>
 	1 + 2.70158 * (x - 1) ** 3 + 1.70158 * (x - 1) ** 2;
@@ -520,6 +522,15 @@ function render(alpha: number, frameDt: number) {
 			(0.5 + 0.5 * easeOutBack(Math.min(1, (time - morphAt) / 0.4))),
 	);
 	plane.runPose(runPhase, running ? 1 : 0);
+	// Crane wings: flap while flying (faster when boosting), rest folded up when running.
+	const boostingNow = state.boosting && crash.phase !== "rolling";
+	{
+		const hz = running ? 0 : boostingNow ? 8 : 3.5;
+		const amp = running ? 0.05 : boostingNow ? 0.85 : 0.6;
+		wingAmp += (amp - wingAmp) * Math.min(1, 8 * frameDt);
+		wingPhase += frameDt * hz * Math.PI * 2;
+		plane.flap(wingPhase, wingAmp, running ? 0.45 : 0.12);
+	}
 	plane.flutter(
 		time,
 		Math.min(1, state.airspeed / config.plane.flutterSpeedRef),
