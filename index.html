@@ -206,7 +206,7 @@
       .marker > * { position: absolute; left: 0; top: 0; translate: -50% -50%; }
       .m-ring {
         width: 54px; height: 54px; border-radius: 50%; box-sizing: border-box;
-        border: 3px solid var(--c); box-shadow: 0 0 0 2px #fff, 0 0 0 5px rgb(40 30 20 / 0.55), 0 0 14px 4px var(--c);
+        border: 3px solid var(--c); box-shadow: 0 0 0 2px #fff, 0 0 0 5px rgb(40 30 20 / 0.55), 0 2px 6px rgb(0 0 0 / 0.35);
       }
       .m-arrow { width: 0; height: 0; border: 12px solid transparent; border-bottom: 26px solid var(--c); border-top: 0;
         filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 2px #fff) drop-shadow(0 0 5px rgb(40 30 20 / 0.7)); }
@@ -219,7 +219,7 @@
       .marker.target .m-arrow { scale: 1.35; }
       .marker.target .m-label { font-size: 14px; }
       /* Auto-aim lock: a red ring with crosshair ticks. */
-      .marker.locked .m-ring { border-color: #e8452c; box-shadow: 0 0 0 2px #fff, 0 0 0 5px #e8452c, 0 0 18px 6px rgb(232 69 44 / 0.7); }
+      .marker.locked .m-ring { border-color: #e8452c; box-shadow: 0 0 0 2px #fff, 0 0 0 5px #e8452c, 0 2px 6px rgb(0 0 0 / 0.35); }
       .marker.locked .m-label::before { content: "LOCK "; color: #e8452c; }
       @keyframes m-pulse { 50% { scale: 1.18; } }
       .m-ring[hidden], .m-arrow[hidden] { display: none; }
