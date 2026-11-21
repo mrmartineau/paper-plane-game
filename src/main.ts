@@ -6,6 +6,7 @@ import { config } from "./config";
 import { createInput } from "./core/input";
 import { startLoop } from "./core/loop";
 import {
+	type AnimalChoice,
 	applySettings,
 	isTouchDevice,
 	saveSettings,
@@ -36,7 +37,7 @@ import {
 } from "./plane/landing";
 import { createPlaneModel } from "./plane/model";
 import { landRun, type RunEnv, runTakeOff, stepRun } from "./plane/run";
-import { ANIMAL_ID, PLANES, type PlaneId, randomPlane } from "./plane/types";
+import { PLANES, type PlaneId, randomPlane } from "./plane/types";
 import { createAirColumns } from "./render/airColumns";
 import { createBirdMeshes } from "./render/birdMeshes";
 import { createBoostTrail } from "./render/boostTrail";
@@ -174,7 +175,9 @@ const baseFlight = { ...config.flight };
 let flyPlane: PlaneId =
 	settings.plane === "random" ? randomPlane() : settings.plane;
 /** Which model is in use: the paper crane in animal mode, otherwise the chosen plane. */
-const currentId = (): PlaneId => (settings.animal ? ANIMAL_ID : flyPlane);
+const currentId = (): PlaneId =>
+	settings.animal === "off" ? flyPlane : settings.animal;
+const isWalker = () => PLANES[currentId()].walker === true; // a land animal: never flies
 let planeId: PlaneId = currentId();
 const plane = createPlaneModel(planeId);
 function usePlane(id: PlaneId) {
@@ -247,10 +250,13 @@ function place(s: FlightState) {
 	quality.hold(); // the world reloads around the new spot; don't judge those frames
 	parked = null;
 	running = false;
+	if (isWalker()) enterWalker();
 }
 
 let paused = false;
 let running = false; // a paper animal on the ground
+let lastAnimal: AnimalChoice =
+	settings.animal === "off" ? "crane" : settings.animal;
 let runPhase = 0; // leg swing, advances with distance run
 let wingPhase = 0; // crane wing flap
 let wingAmp = 0.6;
@@ -270,17 +276,37 @@ const runEnv: RunEnv = {
 function setForm() {
 	usePlane(currentId());
 	morphAt = time;
-	if (running && !settings.animal) {
+	if (isWalker()) {
+		enterWalker(); // a land animal goes to the ground and runs
+	} else if (running && settings.animal === "off") {
 		state = runTakeOff(state, config.flight); // a plane can't run: take off
 		prev = state;
 		running = false;
 	}
+	const name = PLANES[currentId()].name;
 	coursePanel.flash(
-		settings.animal
-			? "Paper crane · land to run · Space to fly"
-			: "Paper plane",
+		settings.animal === "off"
+			? "Paper plane"
+			: isWalker()
+				? `${name} · W run · Space sprint`
+				: `${name} · land to run · Space to fly`,
 		time,
 	);
+}
+
+/** Put a land animal on the ground below where you are, and start running. */
+function enterWalker() {
+	const p = state.position;
+	const floor = runEnv.floorAt(p.x, p.y, p.z);
+	state = landRun(
+		{ ...state, velocity: { x: 0, y: 0, z: 0 } },
+		floor,
+		config.flight,
+	);
+	prev = state;
+	running = true;
+	parked = null;
+	snapped = false;
 }
 let parked: Parked | null = null; // landed on a floating island
 let assistOffUntil = 0; // no landing pull until this time (just took off)
@@ -341,9 +367,13 @@ function update(dt: number) {
 
 	// A paper animal on the ground: run, step, climb, drop off edges, Space takes off.
 	if (running) {
-		const r = stepRun(state, i, dt, config.flight, runEnv);
+		const r = stepRun(state, i, dt, config.flight, runEnv, isWalker());
 		state = r.state;
-		runPhase += state.airspeed * dt * config.flight.runStride;
+		runPhase +=
+			state.airspeed *
+			dt *
+			config.flight.runStride *
+			(state.boosting ? 1.8 : 1); // sprinting: legs very fast
 		if (r.mode === "fly") {
 			running = false;
 			assistOffUntil = time + config.flight.assistCooldown;
@@ -398,7 +428,7 @@ function update(dt: number) {
 		const p = res.state.position;
 		const pad = features.padAt(p.x, p.y, p.z, config.flight.landPadTolerance);
 		// Paper animal: any gentle touchdown on the ground or a pad is a landing, then it runs.
-		if (settings.animal && touchdownOk(res.state, config.flight)) {
+		if (settings.animal !== "off" && touchdownOk(res.state, config.flight)) {
 			const g = groundAt(p.x, p.z);
 			const floor = pad ? pad.y : p.y < g + config.flight.clearance ? g : null;
 			if (floor !== null) {
@@ -521,7 +551,7 @@ function render(alpha: number, frameDt: number) {
 			k *
 			(0.5 + 0.5 * easeOutBack(Math.min(1, (time - morphAt) / 0.4))),
 	);
-	plane.runPose(runPhase, running ? 1 : 0);
+	plane.runPose(runPhase, running ? 1 : 0, state.boosting ? 1.7 : 1);
 	// Crane wings: flap while flying (faster when boosting), rest folded up when running.
 	const boostingNow = state.boosting && crash.phase !== "rolling";
 	{
@@ -655,6 +685,7 @@ function render(alpha: number, frameDt: number) {
 	renderer.render(scene, camera);
 }
 
+if (isWalker()) enterWalker();
 startLoop(update, render);
 setupHelp();
 
@@ -688,7 +719,12 @@ const menu = createMenu({
 addEventListener("keydown", (e) => {
 	if (e.code !== "KeyT" || e.repeat || paused || photo.active) return;
 	if ((e.target as HTMLElement).closest?.("input, select, textarea")) return;
-	settings.animal = !settings.animal;
+	// T: switch the paper animal on and off (it remembers which one).
+	if (settings.animal === "off") settings.animal = lastAnimal;
+	else {
+		lastAnimal = settings.animal;
+		settings.animal = "off";
+	}
 	saveSettings();
 	setForm();
 });

@@ -104,4 +104,61 @@ describe("paper animal running", () => {
 	it("orientation helper sanity: fromEuler faces -Z", () => {
 		expect(axes(fromEuler(0, 0, 0)).forward.z).toBeCloseTo(-1);
 	});
+
+	describe("land animals (cheetah, dog)", () => {
+		const sprint: InputState = { pitch: -1, roll: 0, boost: true };
+		const walk = (
+			s: FlightState,
+			seconds: number,
+			input: InputState,
+			env: RunEnv,
+		) => {
+			for (let i = 0; i < seconds * 60; i++)
+				s = stepRun(s, input, dt, c, env, true).state;
+			return s;
+		};
+
+		it("Space sprints: faster, uses the tank, never takes off", () => {
+			const jog = walk(start(), 4, forward, flat(0));
+			const fast = walk(start(), 4, sprint, flat(0));
+			expect(fast.airspeed).toBeGreaterThan(jog.airspeed * 1.4);
+			expect(fast.boosting).toBe(true);
+			expect(fast.fuel).toBeLessThan(0.5);
+			expect(stepRun(start(), sprint, dt, c, flat(0), true).mode).toBe("run");
+		});
+
+		it("runs out of breath, locks, then recovers", () => {
+			const tired = walk(start(), 1 / c.boostDrain + 1, sprint, flat(0));
+			expect(tired.boostLocked).toBe(true);
+			expect(tired.boosting).toBe(false);
+			expect(tired.airspeed).toBeLessThan(c.runSpeed * 1.1); // back to a normal run
+			const rested = walk(
+				tired,
+				c.boostRestart / (c.boostRefill * c.walkRefill) + 1,
+				forward,
+				flat(0),
+			);
+			expect(stepRun(rested, sprint, dt, c, flat(0), true).state.boosting).toBe(
+				true,
+			);
+		});
+
+		it("falls off a ledge and keeps running on the ground below", () => {
+			const edge: RunEnv = {
+				floorAt: (_x, _y, z) => (z < -10 ? -30 : 0),
+				solidAt: () => false,
+			};
+			let s = start();
+			let sawAir = false;
+			for (let i = 0; i < 8 * 60; i++) {
+				const r = stepRun(s, forward, dt, c, edge, true);
+				expect(r.mode).toBe("run"); // never flies
+				s = r.state;
+				if (s.position.y - c.runHeight > -29)
+					sawAir = sawAir || s.position.y < -1;
+			}
+			expect(sawAir).toBe(true);
+			expect(s.position.y).toBeCloseTo(-30 + c.runHeight, 1);
+		});
+	});
 });

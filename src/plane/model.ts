@@ -13,7 +13,7 @@ export interface PlaneModel {
 	/** Swap to another plane type's fold. */
 	setType(id: PlaneId): void;
 	/** Swing the legs (paper animals): `phase` advances as it runs; `amount` 1 = running, 0 = legs tucked for flight. */
-	runPose(phase: number, amount: number): void;
+	runPose(phase: number, amount: number, amp?: number): void;
 	/** Flap the wings of a paper animal: angle = bias + amp * sin(phase), radians, up is positive. */
 	flap(phase: number, amp: number, bias: number): void;
 }
@@ -99,7 +99,7 @@ export function createPlaneModel(id: PlaneId): PlaneModel {
 	let wings: { i: number; x: number; y: number; side: number }[] = [];
 	const findWings = () => {
 		wings = [];
-		if (!PLANES[currentType].animal) return;
+		if (!PLANES[currentType].wings) return;
 		const attr = mesh.geometry.getAttribute(
 			"position",
 		) as THREE.BufferAttribute;
@@ -158,15 +158,20 @@ export function createPlaneModel(id: PlaneId): PlaneModel {
 			}
 			attr.needsUpdate = true;
 		},
-		runPose(phase, amount) {
+		runPose(phase, amount, amp = 1) {
 			if (legs.length === 0) return;
 			const attr = mesh.geometry.getAttribute(
 				"position",
 			) as THREE.BufferAttribute;
 			const tuck = 1 - amount; // in flight the legs fold back and up
+			const quad = PLANES[currentType].quad === true;
 			for (const l of legs) {
 				const k = Math.min(1, Math.max(0, -l.y / 0.5)); // feet move most, hips stay put
-				const swing = Math.sin(phase + l.side * 1.6) * 0.28 * amount;
+				// Two legs alternate; four legs trot in diagonal pairs.
+				const offset = quad
+					? (l.side > 0 ? 0 : Math.PI) + (l.z > 0 ? Math.PI : 0)
+					: l.side * 1.6;
+				const swing = Math.sin(phase + offset) * 0.28 * amount * amp;
 				attr.setZ(l.i, l.z + k * (swing + tuck * 0.3));
 				attr.setY(l.i, l.y + k * (tuck * 0.3 + Math.max(0, swing) * 0.12));
 			}

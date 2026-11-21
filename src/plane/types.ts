@@ -6,7 +6,14 @@ type P = [number, number, number];
 type Rgb = [number, number, number];
 export type Tri = [P, P, P, Rgb];
 
-export type PlaneId = "dart" | "glider" | "arrow" | "stunt" | "crane";
+export type PlaneId =
+	| "dart"
+	| "glider"
+	| "arrow"
+	| "stunt"
+	| "crane"
+	| "cheetah"
+	| "dog";
 
 export interface PlaneType {
 	id: PlaneId;
@@ -15,6 +22,9 @@ export interface PlaneType {
 	tris: Tri[];
 	flight: Partial<Config["flight"]>;
 	animal?: boolean; // a paper animal: lands anywhere and runs (see run.ts)
+	walker?: boolean; // land only: never flies; Space sprints
+	quad?: boolean; // four legs (diagonal trot) instead of two
+	wings?: boolean; // wings flap (see model.ts)
 }
 
 const shade = (c: Rgb, k: number): Rgb => [c[0] * k, c[1] * k, c[2] * k];
@@ -140,6 +150,80 @@ function crane(): Tri[] {
 	);
 }
 
+/** One paper leg (left side; the fold mirrors it): hip, knee, foot. Coloured LEG so it can swing. */
+function leg(x: number, z: number): Tri[] {
+	return [
+		[[x, -0.05, z], [x - 0.06, -0.05, z], [x - 0.02, -0.55, z + 0.04], LEG],
+		[
+			[x - 0.02, -0.55, z + 0.04],
+			[x - 0.08, -0.55, z + 0.04],
+			[x - 0.05, -0.57, z - 0.12],
+			LEG,
+		],
+	];
+}
+
+/** Origami cheetah: long, low and spotted, with a long tail. */
+function cheetah(): Tri[] {
+	const FUR: Rgb = [0.96, 0.8, 0.52];
+	const DARK: Rgb = [0.36, 0.26, 0.18];
+	const F: P = [0, 0.2, -0.5];
+	const T: P = [0, 0.32, 0];
+	const B: P = [0, 0.22, 0.55];
+	const U: P = [0, -0.1, 0];
+	const L: P = [-0.2, 0.1, 0];
+	const spot = (z: number): Tri => [
+		[-0.04, 0.286, z],
+		[-0.13, 0.19, z - 0.05],
+		[-0.12, 0.2, z + 0.06],
+		DARK,
+	];
+	return fold(
+		[
+			[F, L, T, FUR],
+			[L, B, T, shade(FUR, 0.96)],
+			[F, U, L, shade(FUR, 0.86)],
+			[L, U, B, shade(FUR, 0.8)],
+			[[0, 0.34, -0.58], [-0.11, 0.22, -0.7], [0, 0.17, -1], FUR], // head
+			[F, [0, 0.34, -0.58], [-0.11, 0.22, -0.7], shade(FUR, 0.95)], // neck
+			[[-0.08, 0.34, -0.6], [-0.12, 0.5, -0.58], [-0.03, 0.35, -0.66], DARK], // ear
+			spot(-0.3),
+			spot(-0.05),
+			spot(0.2),
+			spot(0.42),
+			...leg(-0.12, -0.38),
+			...leg(-0.12, 0.42),
+		],
+		[[[0, 0.27, 0.5], [0, 0.36, 0.55], [0, 0.18, 1.15], shade(FUR, 0.92)]], // tail
+	);
+}
+
+/** Origami dog: sturdy, floppy ears, tail up. */
+function dog(): Tri[] {
+	const FUR: Rgb = [0.82, 0.62, 0.4];
+	const DARK: Rgb = [0.5, 0.32, 0.2];
+	const F: P = [0, 0.2, -0.4];
+	const T: P = [0, 0.32, 0];
+	const B: P = [0, 0.26, 0.45];
+	const U: P = [0, -0.12, 0];
+	const L: P = [-0.25, 0.1, 0];
+	return fold(
+		[
+			[F, L, T, FUR],
+			[L, B, T, shade(FUR, 0.95)],
+			[F, U, L, shade(FUR, 0.86)],
+			[L, U, B, shade(FUR, 0.8)],
+			[[0, 0.42, -0.5], [-0.14, 0.28, -0.62], [0, 0.2, -0.9], FUR], // head
+			[F, [0, 0.42, -0.5], [-0.14, 0.28, -0.62], shade(FUR, 0.94)], // neck
+			[[-0.1, 0.43, -0.5], [-0.27, 0.22, -0.46], [-0.13, 0.3, -0.56], DARK], // floppy ear
+			[[-0.02, 0.24, -0.86], [0, 0.2, -0.9], [0, 0.17, -0.82], DARK], // nose
+			...leg(-0.13, -0.3),
+			...leg(-0.13, 0.33),
+		],
+		[[[0, 0.28, 0.44], [0, 0.34, 0.5], [0, 0.62, 0.75], shade(FUR, 0.92)]], // tail, up
+	);
+}
+
 export const PLANES: Record<PlaneId, PlaneType> = {
 	dart: {
 		id: "dart",
@@ -203,6 +287,7 @@ export const PLANES: Record<PlaneId, PlaneType> = {
 		blurb: "Flies like a glider, lands anywhere and runs",
 		tris: crane(),
 		animal: true,
+		wings: true,
 		flight: {
 			drag: 0.0028,
 			glidePitch: -0.09,
@@ -215,13 +300,47 @@ export const PLANES: Record<PlaneId, PlaneType> = {
 			boostMaxSpeed: 85,
 		},
 	},
+	cheetah: {
+		id: "cheetah",
+		name: "Paper cheetah",
+		blurb: "Land only. Very fast; Space sprints",
+		tris: cheetah(),
+		animal: true,
+		walker: true,
+		quad: true,
+		flight: {
+			runSpeed: 24,
+			runAccel: 34,
+			runTurn: 2.2,
+			runSprint: 1.8,
+			runHeight: 0.72,
+		},
+	},
+	dog: {
+		id: "dog",
+		name: "Paper dog",
+		blurb: "Land only. Nimble; Space sprints",
+		tris: dog(),
+		animal: true,
+		walker: true,
+		quad: true,
+		flight: {
+			runSpeed: 14,
+			runAccel: 28,
+			runTurn: 3.4,
+			runSprint: 1.7,
+			runHeight: 0.72,
+		},
+	},
 };
 
 /** The fliers you can pick from (paper animals are a separate setting). */
 export const PLANE_IDS = (Object.keys(PLANES) as PlaneId[]).filter(
 	(id) => !PLANES[id].animal,
 );
-export const ANIMAL_ID: PlaneId = "crane";
+export const ANIMAL_IDS = (Object.keys(PLANES) as PlaneId[]).filter(
+	(id) => PLANES[id].animal,
+);
 
 export function randomPlane(): PlaneId {
 	return PLANE_IDS[Math.floor(Math.random() * PLANE_IDS.length)];

@@ -7,6 +7,7 @@ import { storage } from "./storage";
 export type Quality = "auto" | "low" | "medium" | "high";
 export type Controls = "auto" | "keyboard" | "tilt" | "stick";
 export type TimeOfDay = "cycle" | "day" | "night";
+export type AnimalChoice = "off" | "crane" | "cheetah" | "dog";
 
 export interface Settings {
 	quality: Quality;
@@ -20,7 +21,7 @@ export interface Settings {
 	boostSeconds: number; // a full tank lasts this long (3 .. 15)
 	cameraShake: boolean;
 	plane: PlaneId | "random"; // random = a new one every start
-	animal: boolean; // paper animal mode: a crane that lands anywhere and runs
+	animal: AnimalChoice; // paper animal mode: a crane that flies and runs, or a cheetah / dog that runs
 }
 
 const DEFAULTS: Settings = {
@@ -35,12 +36,16 @@ const DEFAULTS: Settings = {
 	boostSeconds: 6,
 	cameraShake: true,
 	plane: "random",
-	animal: false,
+	animal: "off",
 };
+
+const saved = storage.get<Record<string, unknown>>("settings", {});
+if (typeof saved.animal === "boolean")
+	saved.animal = saved.animal ? "crane" : "off"; // older saves
 
 export const settings: Settings = {
 	...DEFAULTS,
-	...storage.get<Partial<Settings>>("settings", {}),
+	...(saved as Partial<Settings>),
 };
 
 const defaultShake = config.boostTrail.shake;

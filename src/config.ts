@@ -57,6 +57,8 @@ export const config = {
 		runFall: 3, // a drop bigger than this and it flies off the edge
 		runStride: 1.8, // leg phase per metre
 		landCarry: 0.7, // share of horizontal speed kept when landing
+		runSprint: 1.7, // land animals: speed multiplier while Space sprints (uses the boost tank)
+		walkRefill: 1.5, // land animals: boost tank refill multiplier while not sprinting
 		landPadTolerance: 8, // metres above/below a pad's surface that still counts as touching it
 		maxSpeed: 60,
 		clearance: 0.4, // metres above ground before it counts as a crash

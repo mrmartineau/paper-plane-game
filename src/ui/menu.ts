@@ -1,4 +1,5 @@
 import {
+	type AnimalChoice,
 	type Controls,
 	type Quality,
 	type Settings,
@@ -76,10 +77,10 @@ export function createMenu(hooks: MenuHooks) {
 	showPlane(hooks.planeName());
 
 	// Paper animal
-	const animal = $<HTMLInputElement>("[name=animal]");
-	animal.checked = settings.animal;
+	const animal = $<HTMLSelectElement>("[name=animal]");
+	animal.value = settings.animal;
 	animal.addEventListener("change", () => {
-		settings.animal = animal.checked;
+		settings.animal = animal.value as AnimalChoice;
 		saveSettings();
 		hooks.onForm();
 	});
@@ -163,7 +164,7 @@ export function createMenu(hooks: MenuHooks) {
 	const open = () => {
 		if (dialog.open) return;
 		copied.textContent = "";
-		animal.checked = settings.animal; // may have changed with the T key
+		animal.value = settings.animal; // may have changed with the T key
 		dialog.showModal();
 		hooks.onPause(true);
 	};

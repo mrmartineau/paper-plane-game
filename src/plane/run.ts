@@ -1,5 +1,7 @@
 // A paper animal on the ground: run with the stick, step up small ledges, get stopped by
-// steep slopes and solid things, drop off edges into a glide, and take off with Space.
+// steep slopes and solid things. A flier (the crane) drops off edges into a glide and takes
+// off with Space. A land animal (cheetah, dog) never flies: it falls off edges and keeps
+// running, and Space makes it sprint (legs very fast, speed up, uses the boost tank).
 // Reuses FlightState so rendering, HUD and camera need nothing special. Pure, no Three.js.
 import type { Config } from "../config";
 import type { InputState } from "../core/input";
@@ -19,6 +21,8 @@ export interface RunEnv {
 }
 
 export type RunResult = { state: FlightState; mode: "run" | "fly" };
+
+const FALL_GRAVITY = 22; // m/s², a land animal dropping off a ledge (snappy, paper-light)
 
 /** Touch down on a floor and start running, keeping some of the speed. */
 export function landRun(s: FlightState, floor: number, c: Flight): FlightState {
@@ -61,17 +65,22 @@ export function stepRun(
 	dt: number,
 	c: Flight,
 	env: RunEnv,
+	walker = false,
 ): RunResult {
 	const yaw = heading(s.orientation);
-	if (input.boost) return { state: runTakeOff(s, c), mode: "fly" }; // Space: take off
+	if (input.boost && !walker) return { state: runTakeOff(s, c), mode: "fly" }; // Space: take off
+
+	// Land animals: Space sprints while there's fuel (and it isn't locked after running dry).
+	const sprinting = walker && input.boost && s.fuel > 0 && !s.boostLocked;
+	const boost = sprinting ? c.runSprint : 1;
 
 	// Push forward to run; pull back to brake. You can turn on the spot, a bit slower.
-	const want = Math.max(0, -input.pitch) * c.runSpeed;
+	const want = Math.max(0, -input.pitch) * c.runSpeed * boost;
 	const brake = input.pitch > 0.05 ? 2 : 1;
 	let speed = s.airspeed;
 	speed +=
 		want > speed
-			? Math.min(want - speed, c.runAccel * dt)
+			? Math.min(want - speed, c.runAccel * boost * dt)
 			: -Math.min(speed - want, c.runBrake * brake * dt);
 	const newYaw =
 		yaw -
@@ -98,8 +107,19 @@ export function stepRun(
 		floor = env.floorAt(x, s.position.y, z);
 	}
 
-	// Ran off a ledge: take to the air.
-	if (footY - floor > c.runFall) {
+	const wantY = floor + c.runHeight;
+	let y: number;
+	let fall = 0;
+	if (walker && footY - floor > 0.1) {
+		// Off the ground: fall, then land and keep running.
+		fall = s.velocity.y - FALL_GRAVITY * dt;
+		y = s.position.y + fall * dt;
+		if (y <= wantY) {
+			y = wantY;
+			fall = 0;
+		}
+	} else if (!walker && footY - floor > c.runFall) {
+		// A flier ran off a ledge: take to the air.
 		const t = createFlightState(
 			{ x, y: s.position.y, z },
 			newYaw,
@@ -109,17 +129,27 @@ export function stepRun(
 			state: { ...t, fuel: s.fuel, boostLocked: s.boostLocked },
 			mode: "fly",
 		};
+	} else {
+		// Follow the ground smoothly, never sinking into it.
+		y = Math.max(
+			wantY - 0.2,
+			s.position.y + (wantY - s.position.y) * Math.min(1, 14 * dt),
+		);
 	}
 
-	// Follow the ground smoothly, never sinking into it.
-	const wantY = floor + c.runHeight;
-	const y = Math.max(
-		wantY - 0.2,
-		s.position.y + (wantY - s.position.y) * Math.min(1, 14 * dt),
-	);
 	const next = standing(s, x, y, z, newYaw, speed, c);
-	next.fuel = Math.min(1, s.fuel + c.boostRefill * c.landRefill * dt);
-	next.boostLocked = s.boostLocked && next.fuel < c.boostRestart;
+	next.velocity.y = fall;
+	next.boosting = sprinting;
+	if (sprinting) {
+		next.fuel = Math.max(0, s.fuel - c.boostDrain * dt);
+		next.boostLocked = next.fuel <= 0;
+	} else {
+		next.fuel = Math.min(
+			1,
+			s.fuel + c.boostRefill * (walker ? c.walkRefill : c.landRefill) * dt,
+		);
+		next.boostLocked = s.boostLocked && next.fuel < c.boostRestart;
+	}
 	return { state: next, mode: "run" };
 }
 
