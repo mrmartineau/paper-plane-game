@@ -66,6 +66,7 @@ import { createMenu } from "./ui/menu";
 import { createPhotoMode } from "./ui/photoMode";
 import { createRadar } from "./ui/radar";
 import { createStats } from "./ui/stats";
+import { createWho } from "./ui/who";
 import { blend } from "./world/biomes";
 import { createBirdField } from "./world/birds";
 import { type Cloud, createCloudField } from "./world/clouds";
@@ -803,6 +804,12 @@ function render(alpha: number, frameDt: number) {
 if (isWalker()) enterWalker();
 startLoop(update, render);
 setupHelp();
+
+createWho({
+	onPause: (p) => {
+		paused = p;
+	},
+});
 
 const menu = createMenu({
 	seed,

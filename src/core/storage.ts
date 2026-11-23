@@ -1,7 +1,10 @@
 // Typed localStorage wrapper. Storage can be missing or full (private windows,
 // blocked site data), so every call is guarded and falls back quietly.
 
-const PREFIX = "paper-plane:";
+import { current, prefixFor } from "./profiles";
+
+// Every key is saved under the active kid's prefix (see profiles.ts).
+const PREFIX = prefixFor(current.id);
 
 export const storage = {
 	get<T>(key: string, fallback: T): T {
