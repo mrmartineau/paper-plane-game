@@ -164,14 +164,6 @@
       #menu select, #menu input[type="text"] { font: inherit; padding: 4px 6px; border: 1px solid var(--paper-edge); border-radius: 4px; background: #fff; color: var(--ink); }
       #menu input[type="text"] { flex: 1; min-width: 0; }
       @media (pointer: coarse) { #menu select, #menu input[type="text"] { font-size: 16px; } } /* under 16px, iOS zooms in on focus */
-      .who { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
-      .who button { width: 52px; height: 52px; padding: 0; font-size: 28px; line-height: 1; border-radius: 10px; }
-      .who.big button { width: 76px; height: 76px; font-size: 44px; border-radius: 14px; }
-      .who button[aria-pressed="true"] { outline: 3px solid var(--ink); outline-offset: 2px; }
-      #who { border: 1px solid var(--paper-edge); border-radius: 8px; background: var(--paper); color: var(--ink); padding: 18px 22px; max-width: min(92vw, 420px); text-align: center; font: 14px/1.4 system-ui, sans-serif; }
-      #who h2 { margin: 0 0 6px; font-size: 20px; }
-      #who .who { justify-content: center; }
-      #who::backdrop { background: rgb(40 30 20 / 0.45); }
       #menu .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
       #menu button {
         font: 600 14px/1 system-ui, sans-serif; padding: 9px 14px; cursor: pointer;
@@ -257,21 +249,9 @@
     <div id="stick-base" hidden></div>
     <div id="stick-knob" hidden></div>
 
-    <dialog id="who" aria-labelledby="who-title">
-      <h2 id="who-title">Who's flying?</h2>
-      <div class="who big" data-who></div>
-    </dialog>
-
     <dialog id="menu" aria-labelledby="menu-title">
       <h2 id="menu-title">Paused</h2>
       <button class="primary" type="button" data-action="resume">Resume</button>
-
-      <h3>Who's flying</h3>
-      <div class="who" data-who></div>
-      <div class="row">
-        <button type="button" data-action="who-add">+ New kid</button>
-        <button type="button" data-action="who-remove">Remove this kid</button>
-      </div>
 
       <details class="guide">
         <summary>How to play</summary>
