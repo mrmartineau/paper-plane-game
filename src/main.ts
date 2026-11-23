@@ -18,8 +18,10 @@ import { decodeGhost, encodeGhost } from "./courses/ghost";
 import { passedThrough } from "./courses/rings";
 import { type Best, createRun } from "./courses/run";
 import { createDevJumps, createDevPanel, type Telemetry } from "./debug";
+
 import { createMultiplayer } from "./net/multiplayer";
-import { BOOST, CRASHED, type Quat, RUNNING } from "./net/protocol";
+import { BOOST, CRASHED, type Quat, RUNNING, SHIELD } from "./net/protocol";
+import { ABILITY, createAbilities } from "./plane/abilities";
 import { createCrash, respawnAt } from "./plane/crash";
 import {
 	axes,
@@ -54,6 +56,7 @@ import { createCourseMeshes } from "./render/courseMeshes";
 import { createHoopMeshes } from "./render/hoopMeshes";
 import { createLighting } from "./render/lighting";
 import { createQuality } from "./render/quality";
+import { createShield } from "./render/shield";
 import { createSky } from "./render/sky";
 import { createVineMeshes } from "./render/vines";
 import { createWater } from "./render/water";
@@ -198,7 +201,14 @@ function usePlane(id: PlaneId) {
 	courseMeshes.setGhostGeometry(plane.mesh.geometry);
 	tracker.stats.plane = PLANES[id].name;
 }
+
 scene.add(plane.mesh);
+// Dash and shield: short abilities on cooldowns. The shield bubble rides on the plane.
+const abilities = createAbilities();
+const shield = createShield();
+plane.mesh.add(shield.mesh);
+let prevDash = false;
+let prevShield = false;
 const input = createInput(renderer.domElement);
 const crash = createCrash(scene, groundAt, env.solidAt);
 // Multiplayer: everyone on this seed shares a room. A paper ball that hits you crumples you.
@@ -216,7 +226,25 @@ const mp = createMultiplayer(
 			sound.crumple();
 			coursePanel.flash("Hit by a paper ball!", time);
 		},
+
 		onFirstPeer: (peer) => place(spawnBeside(peer.p[0], peer.p[2], peer.q)),
+		onBlock: () => {
+			sound.block();
+			coursePanel.flash("Blocked by your shield!", time);
+		},
+		onIt: (mine, passedByMe) => {
+			sound.chime(mine ? 0.7 : 1.3);
+			coursePanel.flash(
+				mine
+					? passedByMe
+						? "You are IT!"
+						: "Tagged! You are IT: touch someone"
+					: passedByMe
+						? "Tag passed! You are free"
+						: "The tag moved",
+				time,
+			);
+		},
 		onScore: (_id, mine) => {
 			if (!mine) return;
 			sound.chime(1.2);
@@ -224,6 +252,17 @@ const mp = createMultiplayer(
 		},
 	},
 );
+
+const dashBtn = document.getElementById("dash-btn") as HTMLElement;
+const shieldBtn = document.getElementById("shield-btn") as HTMLElement;
+/** Touch button: shows the seconds left while its ability is cooling down. */
+function setButton(el: HTMLElement, label: string, wait: number) {
+	const text = wait > 0 ? `${Math.ceil(wait)}` : label;
+	if (el.textContent !== text) el.textContent = text;
+	el.toggleAttribute("data-cool", wait > 0);
+}
+const abilityText = (on: boolean, left: number, onText: string) =>
+	on ? onText : left > 0 ? `${Math.ceil(left)} s` : "Ready";
 /** A fresh flight state a short way from another player, flying the same way. */
 function spawnBeside(x: number, z: number, q: Quat): FlightState {
 	const a = Math.random() * Math.PI * 2;
@@ -410,7 +449,13 @@ function update(dt: number) {
 	if (input.gamepad.start) menu.toggle();
 	if (paused || photo.active) return;
 	bench?.steer(i, telemetry.altitude, telemetry.climb, state.airspeed);
+
 	prev = state;
+	abilities.step(dt);
+	if (i.shield && !prevShield && abilities.shield()) sound.shield();
+	prevShield = !!i.shield;
+	const dashPressed = !!i.dash && !prevDash;
+	prevDash = !!i.dash;
 	// Throw a paper ball (flying only), then share where you are.
 	if (i.fire && !running && crash.phase === "flying") {
 		const f = axes(state.orientation).forward;
@@ -431,9 +476,11 @@ function update(dt: number) {
 				f:
 					(state.boosting ? BOOST : 0) |
 					(running ? RUNNING : 0) |
-					(crash.phase === "rolling" ? CRASHED : 0),
+					(crash.phase === "rolling" ? CRASHED : 0) |
+					(abilities.shielded ? SHIELD : 0),
 			},
 			crash.phase === "flying",
+			abilities.shielded,
 		);
 	}
 	const fresh = crash.update(dt);
@@ -512,7 +559,23 @@ function update(dt: number) {
 		}
 	}
 
-	const res = stepFlight(state, i, dt, config.flight, env);
+	// Dash: kick up to dash speed, then fly as if boosting for half a second, using no fuel.
+	const fuelBefore = state.fuel;
+	const lockedBefore = state.boostLocked;
+	if (dashPressed && abilities.dash()) {
+		state = {
+			...state,
+			airspeed: Math.max(state.airspeed, ABILITY.dashSpeed),
+		};
+		sound.dash();
+	}
+	const res = stepFlight(
+		state,
+		abilities.dashing ? { ...i, boost: true } : i,
+		dt,
+		config.flight,
+		env,
+	);
 	if (res.crashed) {
 		// A gentle touchdown on a floating island's grassy top is a landing, not a crash.
 		const p = res.state.position;
@@ -543,7 +606,10 @@ function update(dt: number) {
 		sound.crumple();
 		return; // freeze where we hit; the plane scrunches into a ball there
 	}
+
 	state = res.state;
+	if (abilities.dashing)
+		state = { ...state, fuel: fuelBefore, boostLocked: lockedBefore };
 
 	// Paper rustles when the wings snap round quickly.
 	const ax = axes(state.orientation);
@@ -752,12 +818,19 @@ function render(alpha: number, frameDt: number) {
 			roll: hudRoll,
 			wind: wind.at(time),
 			online: mp.count,
+
 			hits: mp.score,
+			tag: mp.isIt ? "IT!" : mp.count > 1 ? "Free" : "-",
+			dash: abilityText(abilities.dashing, abilities.dashWait, "Go!"),
+			shield: abilityText(abilities.shielded, abilities.shieldLeft, "On"),
 		},
 		time,
 	);
 
 	mp.render(time);
+	shield.update(abilities.shielded, abilities.shieldLeft, time);
+	setButton(dashBtn, "DASH", abilities.dashWait);
+	setButton(shieldBtn, "SHIELD", abilities.shieldWait);
 	const peers = mp.peers();
 	radar.update(pos, heading(state.orientation), peers);
 	hoopMeshes.update(nearbyHoops, time, hoopPasses);

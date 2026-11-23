@@ -10,6 +10,7 @@ export interface Peer {
 	y: number;
 	z: number;
 	colour: string;
+	it?: boolean;
 }
 
 interface Marker {
@@ -110,9 +111,11 @@ export function createMarkers(camera: THREE.PerspectiveCamera) {
 				m.el.style.setProperty("--c", p.colour);
 				m.el.classList.toggle("target", p.id === nearest);
 				m.el.classList.toggle("locked", p.id === lockedId);
+				m.el.classList.toggle("it", p.it === true);
 				m.ring.hidden = !inView;
 				m.arrow.hidden = inView;
 				if (!inView) m.arrow.style.transform = `rotate(${angle.toFixed(0)}deg)`;
+
 				m.label.textContent =
 					d(me, p) < 1000
 						? `${Math.round(d(me, p))} m`

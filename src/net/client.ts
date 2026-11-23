@@ -60,7 +60,9 @@ export function connect(room: string, on: (m: ServerMsg) => void) {
 				for (const p of m.players) players.set(p.id, p);
 			} else if (m.t === "join") players.set(m.player.id, m.player);
 			else if (m.t === "leave") players.delete(m.id);
-			else if (m.t === "score") {
+			else if (m.t === "it") {
+				for (const p of players.values()) p.it = p.id === m.id;
+			} else if (m.t === "score") {
 				const p = players.get(m.id);
 				if (p) p.score = m.score;
 			} else if (m.t === "full") closed = true; // don't retry a full room

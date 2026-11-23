@@ -138,7 +138,14 @@
         right: 104px; bottom: 16px; width: 60px; height: 60px; border-radius: 50%;
         font-size: 12px; letter-spacing: 0.04em; touch-action: none; user-select: none;
       }
-      #fire-btn[hidden], #boost-btn[hidden], #stick-base[hidden], #stick-knob[hidden] { display: none; }
+      #dash-btn, #shield-btn {
+        bottom: 104px; width: 60px; height: 60px; border-radius: 50%;
+        font-size: 11px; letter-spacing: 0.03em; touch-action: none; user-select: none;
+      }
+      #dash-btn { right: 16px; }
+      #shield-btn { right: 84px; }
+      .corner-btn[data-cool] { opacity: 0.55; }
+      #dash-btn[hidden], #shield-btn[hidden], #fire-btn[hidden], #boost-btn[hidden], #stick-base[hidden], #stick-knob[hidden] { display: none; }
       #stick-base, #stick-knob {
         position: fixed; left: 0; top: 0; border-radius: 50%; pointer-events: none;
         margin: -60px 0 0 -60px; width: 120px; height: 120px;
@@ -223,6 +230,12 @@
       .marker.locked .m-ring { border-color: #e8452c; box-shadow: 0 0 0 2px #fff, 0 0 0 5px #e8452c, 0 2px 6px rgb(0 0 0 / 0.35); }
       .marker.locked .m-label::before { content: "LOCK "; color: #e8452c; }
       @media (pointer: coarse) { .m-arrow { scale: 1.3; } .marker.target .m-arrow { scale: 1.7; } .m-label { font-size: 13px; } }
+      
+      /* Tag game: the player who is IT gets a gold ring. */
+      .marker.it .m-ring { border-color: #f2c230; box-shadow: 0 0 0 2px #fff, 0 0 0 6px #b8860b, 0 2px 6px rgb(0 0 0 / 0.35); width: 64px; height: 64px; }
+      .marker.it .m-arrow { border-bottom-color: #f2c230; }
+      .marker.it .m-label { border-color: #f2c230; }
+      .marker.it .m-label::before { content: "IT "; color: #b8860b; }
       @keyframes m-pulse { 50% { scale: 1.18; } }
       .m-ring[hidden], .m-arrow[hidden] { display: none; }
       #radar { position: fixed; top: 12px; right: 12px; width: 120px; height: 120px; pointer-events: none; }
@@ -246,6 +259,8 @@
     <button id="pause-btn" class="corner-btn" type="button" aria-label="Pause and settings" title="Pause (Esc)">❚❚</button>
     <button id="boost-btn" class="corner-btn" type="button" hidden>BOOST</button>
     <button id="fire-btn" class="corner-btn" type="button" hidden>FIRE</button>
+    <button id="dash-btn" class="corner-btn" type="button" hidden>DASH</button>
+    <button id="shield-btn" class="corner-btn" type="button" hidden>SHIELD</button>
     <div id="stick-base" hidden></div>
     <div id="stick-knob" hidden></div>
 
@@ -260,6 +275,8 @@
           <dt><kbd>S</kbd> held</dt><dd>Loop</dd>
           <dt><kbd>Space</kbd></dt><dd>Boost: a rocket. Gravity off, fly anywhere</dd>
           <dt><kbd>F</kbd></dt><dd>Throw a paper ball at other planes</dd>
+          <dt><kbd>Q</kbd></dt><dd>Dash: a quick burst of speed</dd>
+          <dt><kbd>E</kbd></dt><dd>Shield: a paper bubble that blocks balls and tags</dd>
           <dt><kbd>? H</kbd></dt><dd>Controls card</dd>
           <dt><kbd>T</kbd></dt><dd>Turn into your chosen form and back</dd>
           <dt><kbd>U</kbd></dt><dd>Show / hide flight info</dd>
@@ -273,6 +290,7 @@
       <p>Cities have skyscrapers with streets to fly down, skybridges, and a gate at the edge you can fly through. Windows glow at night.</p>
       <p>Land on a runway (floating mountains) or an H pad (small islands): fly near one, a little above it, and let go. It pulls you in. Hold boost to pull away. The top panel points to the nearest pad. Landing refuels your boost; Space takes off.</p>
       <p>Other players on the same world seed fly with you. The default seed is the public sky; copy the link to fly with friends in your own world. Throws auto-aim: keep a player in front of you (a red LOCK shows) and the ball leads them. Hit a plane with a paper ball and it crumples; you get a hit. Turn it off with Fly with others.</p>
+      <p>Tag: when two or more fly together, one player is IT (gold ring). IT passes the tag by touching another plane. Touch someone to pass it on and score a point. A shield stops a tag, and you cannot be tagged back for 3 seconds.</p>
       <p>Wind pushes you along. Where it blows up a hill, it lifts you (ridge lift).</p>
       <p>Find a red start gate with a striped ribbon and fly through it to start a course. Rings turn green as you pass them. Your best run comes back as a ghost.</p>
       <p>Fly through the paper hoops (they turn gold) and the sandstone arches. Dodge the trees, rocks, floating islands and paper birds.</p>
@@ -382,6 +400,9 @@
           <dt>Wind</dt><dd data-hud="wind">0 m/s</dd>
           <dt>Online</dt><dd data-hud="online">Alone</dd>
           <dt>Hits</dt><dd data-hud="hits">0</dd>
+          <dt>Tag</dt><dd data-hud="tag">Free</dd>
+          <dt>Dash</dt><dd data-hud="dash">Ready</dd>
+          <dt>Shield</dt><dd data-hud="shield">Ready</dd>
         </dl>
       </section>
     </div>
@@ -393,6 +414,7 @@
         <dt><kbd>A</kbd> <kbd>D</kbd></dt><dd>Bank left / right</dd>
         <dt><kbd>Space</kbd></dt><dd>Boost</dd>
         <dt><kbd>F</kbd></dt><dd>Throw a paper ball</dd>
+        <dt><kbd>Q</kbd> <kbd>E</kbd></dt><dd>Dash / shield</dd>
         <dt>Click</dt><dd>Steer with the mouse</dd>
         <dt><kbd>Esc</kbd></dt><dd>Pause, settings, help</dd>
       </dl>

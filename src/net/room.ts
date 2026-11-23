@@ -3,6 +3,7 @@ import type { Player } from "./protocol";
 
 export const MAX_PLAYERS = 24;
 export const STATE_GAP_MS = 40; // drop state faster than 25 Hz
+export const TAG_GAP_MS = 2500; // the tag cannot be passed faster than this
 export const SHOT_GAP_MS = 150; // drop shots faster than ~6 a second
 
 /** Paper colours for players. */
@@ -60,4 +61,29 @@ export function allow(
 	if (now - (last.get(key) ?? -Infinity) < gap) return false;
 	last.set(key, now);
 	return true;
+}
+
+/** Who is "it": the current one if there is one, else a random player. Needs two players. */
+export function chooseIt(players: Player[], rnd = Math.random): number | null {
+	if (players.length < 2) return null;
+	const now = players.find((p) => p.it);
+	return now ? now.id : players[Math.floor(rnd() * players.length)].id;
+}
+
+/**
+ * `to` was touched by `from`. Valid only when `from` is "it" and they are different players.
+ * Returns the two players as they should be afterwards (the tagger scores a point), or null.
+ */
+export function passTag(
+	players: Player[],
+	from: number,
+	to: number,
+): { tagger: Player; tagged: Player } | null {
+	const a = players.find((p) => p.id === from);
+	const b = players.find((p) => p.id === to);
+	if (!a?.it || !b || a.id === b.id) return null;
+	return {
+		tagger: { ...a, it: false, score: a.score + 1 },
+		tagged: { ...b, it: true },
+	};
 }

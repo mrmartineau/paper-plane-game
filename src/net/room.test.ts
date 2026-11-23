@@ -26,3 +26,30 @@ describe("room rules", () => {
 		expect(allow(last, "a", 45, 40)).toBe(true);
 	});
 });
+
+describe("tag game", () => {
+	const p = (id: number, it = false, score = 0) => ({
+		id,
+		colour: "#fff",
+		score,
+		it,
+	});
+
+	it("needs two players, keeps the current one, else picks one", async () => {
+		const { chooseIt } = await import("./room");
+		expect(chooseIt([p(1)])).toBeNull();
+		expect(chooseIt([p(1), p(2, true)])).toBe(2);
+		expect(chooseIt([p(1), p(2), p(3)], () => 0.99)).toBe(3);
+	});
+
+	it("passes only from the player who is it, and scores the tagger", async () => {
+		const { passTag } = await import("./room");
+		const players = [p(1, true, 2), p(2)];
+		const r = passTag(players, 1, 2);
+		expect(r?.tagger).toMatchObject({ id: 1, it: false, score: 3 });
+		expect(r?.tagged).toMatchObject({ id: 2, it: true });
+		expect(passTag(players, 2, 1)).toBeNull(); // 2 is not it
+		expect(passTag(players, 1, 1)).toBeNull();
+		expect(passTag(players, 1, 9)).toBeNull();
+	});
+});

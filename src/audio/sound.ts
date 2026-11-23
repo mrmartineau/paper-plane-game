@@ -141,6 +141,20 @@ export function createSound() {
 				bell(t + i * 0.12, 660 * p, 0.16);
 			});
 		},
+		/** Dash: a rush of air. */
+		dash() {
+			if (ctx) burst(ctx.currentTime, 700, 0.7, 0.35, 0.4);
+		},
+		/** Shield up: two soft bells. */
+		shield() {
+			if (!ctx) return;
+			bell(ctx.currentTime, 520, 0.16);
+			bell(ctx.currentTime + 0.09, 780, 0.12);
+		},
+		/** A paper ball bounces off your shield. */
+		block() {
+			if (ctx) burst(ctx.currentTime, 320, 2, 0.3, 0.12);
+		},
 		/** A soft paper "thup" when you throw a ball. */
 		pop() {
 			if (ctx) burst(ctx.currentTime, 900 + Math.random() * 400, 3, 0.12, 0.06);

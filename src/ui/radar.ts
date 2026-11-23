@@ -6,7 +6,9 @@ export interface Blip {
 	x: number;
 	y: number;
 	z: number;
+
 	colour: string;
+	it?: boolean;
 }
 
 const SIZE = 120;
@@ -70,7 +72,8 @@ export function createRadar() {
 				const px = c + (d > 0 ? (right / d) * k * R : 0);
 				const py = c - (d > 0 ? (ahead / d) * k * R : 0);
 				const dy = b.y - me.y;
-				ctx.fillStyle = b.colour;
+
+				ctx.fillStyle = b.it ? "#f2c230" : b.colour;
 				ctx.strokeStyle = "rgba(60, 50, 40, 0.9)";
 				ctx.lineWidth = 1.5;
 				ctx.beginPath();

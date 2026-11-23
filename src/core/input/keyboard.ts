@@ -19,6 +19,8 @@ export function createKeyboard() {
 				roll: axis(["KeyA", "ArrowLeft"], ["KeyD", "ArrowRight"]),
 				boost: down.has("Space"),
 				fire: down.has("KeyF"),
+				dash: down.has("KeyQ"),
+				shield: down.has("KeyE"),
 			};
 		},
 	};

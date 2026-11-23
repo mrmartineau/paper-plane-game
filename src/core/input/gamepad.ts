@@ -1,6 +1,6 @@
 import { config } from "../../config";
 
-// Gamepad: left stick steers (push forward = nose down), A or right trigger boosts, X or RB fires,
+// Gamepad: left stick steers (push forward = nose down), A or right trigger boosts, X or RB fires, B dashes, Y shields,
 // Start pauses. Polled once per step.
 
 export function createGamepad() {
@@ -9,6 +9,8 @@ export function createGamepad() {
 		roll: 0,
 		boost: false,
 		fire: false,
+		dash: false,
+		shield: false,
 		start: false,
 		connected: false,
 	};
@@ -25,6 +27,8 @@ export function createGamepad() {
 				g.roll = 0;
 				g.boost = false;
 				g.fire = false;
+				g.dash = false;
+				g.shield = false;
 				g.start = false;
 				return;
 			}
@@ -34,6 +38,8 @@ export function createGamepad() {
 			g.pitch = dead(pad.axes[1] ?? 0); // forward is negative = nose down
 			g.boost = !!(pad.buttons[0]?.pressed || pad.buttons[7]?.pressed);
 			g.fire = !!(pad.buttons[2]?.pressed || pad.buttons[5]?.pressed); // X or right bumper
+			g.dash = !!pad.buttons[1]?.pressed; // B
+			g.shield = !!pad.buttons[3]?.pressed; // Y
 			const startDown = !!pad.buttons[9]?.pressed;
 			g.start = startDown && !startWasDown; // one press, not held
 			startWasDown = startDown;

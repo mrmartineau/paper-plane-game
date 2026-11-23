@@ -9,12 +9,15 @@ import {
 } from "../net/protocol";
 import {
 	allow,
+	chooseIt,
 	MAX_PLAYERS,
 	nextId,
+	passTag,
 	pickColour,
 	SHOT_GAP_MS,
 	STATE_GAP_MS,
 	scoreHit,
+	TAG_GAP_MS,
 } from "../net/room";
 
 export default {
@@ -52,6 +55,7 @@ export class Room extends DurableObject<Env> {
 		server.serializeAttachment(me);
 		send(server, { t: "welcome", id: me.id, colour: me.colour, players });
 		this.broadcast({ t: "join", player: me }, server);
+		this.syncIt();
 		return new Response(null, { status: 101, webSocket: client });
 	}
 
@@ -67,6 +71,19 @@ export class Room extends DurableObject<Env> {
 		} else if (m.t === "shot") {
 			if (allow(this.last, `${me.id}f`, now, SHOT_GAP_MS))
 				this.broadcast({ t: "shot", id: me.id, p: m.p, v: m.v }, ws);
+		} else if (m.t === "tag") {
+			// You were touched by the player who is "it": the tag passes to you.
+			if (!allow(this.last, "tag", now, TAG_GAP_MS)) return;
+			const pass = passTag(this.players(), m.by, me.id);
+			if (!pass) return;
+			this.setPlayer(pass.tagger);
+			this.setPlayer(pass.tagged);
+			this.broadcast({
+				t: "score",
+				id: pass.tagger.id,
+				score: pass.tagger.score,
+			});
+			this.broadcast({ t: "it", id: pass.tagged.id, from: pass.tagger.id });
 		} else {
 			const shooter = scoreHit(this.players(), me.id, m.by);
 			if (!shooter) return;
@@ -88,7 +105,26 @@ export class Room extends DurableObject<Env> {
 	private leave(ws: WebSocket) {
 		const me = ws.deserializeAttachment() as Player | null;
 		ws.serializeAttachment(null);
-		if (me) this.broadcast({ t: "leave", id: me.id }, ws);
+		if (me) {
+			this.broadcast({ t: "leave", id: me.id }, ws);
+			this.syncIt();
+		}
+	}
+
+	/** Make sure exactly one player is "it" (when there are two or more), and tell everyone. */
+	private syncIt() {
+		const players = this.players();
+		const before = players.find((p) => p.it)?.id ?? null;
+		const id = chooseIt(players);
+		if (id === before) return;
+		for (const p of players) this.setPlayer({ ...p, it: p.id === id });
+		this.broadcast({ t: "it", id });
+	}
+
+	private setPlayer(p: Player) {
+		for (const s of this.ctx.getWebSockets())
+			if ((s.deserializeAttachment() as Player | null)?.id === p.id)
+				s.serializeAttachment(p);
 	}
 
 	private players(): Player[] {

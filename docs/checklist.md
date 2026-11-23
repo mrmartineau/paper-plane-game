@@ -123,5 +123,8 @@ Pulled forward because they were one-liners: sun shadow that follows the plane, 
 - [x] Radar (top-right): other players as dots in their colour, you in the middle facing up; hollow = below you, dash = above (`src/ui/radar.ts`)
 - [x] Spawn next to another player: on joining and after a crash (60–140 m away, same heading)
 - [x] Find and follow: a ring + distance around players in view, an edge arrow + distance when they are off-screen, the nearest one bigger and pulsing; a fading dot trail behind each player (`src/ui/markers.ts`, `src/net/multiplayer.ts`)
+- [x] Boost dash (Q / B / DASH): half a second of rocket speed, no fuel, 5 s cooldown (`src/plane/abilities.ts`)
+- [x] Shield (E / Y / SHIELD): a paper bubble for 3 s that blocks paper balls and tags, 12 s cooldown; others see it (`src/render/shield.ts`)
+- [x] Tag game: one player is IT (gold ring + radar dot); touch someone to pass it on and score a point; 3 s immunity after passing (`src/net/room.ts`, `src/worker/index.ts`)
 - [ ] **Done when:** two people on the same seed see each other fly smoothly and can shoot each other down (you, after deploy)
 

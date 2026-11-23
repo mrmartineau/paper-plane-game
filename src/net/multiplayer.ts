@@ -18,11 +18,14 @@ import {
 	stepShots,
 } from "../plane/shots";
 import { PLANES, type PlaneId } from "../plane/types";
+import { createShield } from "../render/shield";
 import { connect, type NetLink } from "./client";
-import { CRASHED, type PlayerState, type Vec } from "./protocol";
+import { CRASHED, type PlayerState, SHIELD, type Vec } from "./protocol";
 import { createRemotes, type Pose } from "./remotes";
 
 const MAX_SHOTS = 128;
+const TAG_RADIUS = 9; // m: "it" touches you inside this distance
+const TAG_IMMUNE = 3; // s after passing the tag on, so it cannot bounce straight back
 const TRAIL_SECS = 4; // how far back a player's trail reaches
 const TRAIL_GAP = 0.1; // seconds between trail dots
 const TRAIL_MAX = 24 * Math.ceil(TRAIL_SECS / TRAIL_GAP + 1);
@@ -38,6 +41,7 @@ interface Remote {
 	model: PlaneModel;
 	ball: THREE.Mesh;
 	type: string;
+	shield: ReturnType<typeof createShield>;
 }
 
 export function createMultiplayer(
@@ -54,6 +58,10 @@ export function createMultiplayer(
 		onScore: (id: number, mine: boolean) => void;
 		/** The first other player you can see after joining: a good place to spawn. */
 		onFirstPeer: (pose: Pose) => void;
+		/** Your shield stopped a paper ball. */
+		onBlock: () => void;
+		/** The tag moved. `mine` = you are IT now; `passedByMe` = you just passed it on. */
+		onIt: (mine: boolean, passedByMe: boolean) => void;
 	},
 ) {
 	let link: NetLink | null = null;
@@ -63,6 +71,7 @@ export function createMultiplayer(
 	let cooldown = 0;
 	let clock = 0; // seconds, for the interpolation buffer
 	let greeted = false; // already moved next to someone since joining
+	let immune = 0; // s left before you can be tagged again
 
 	const balls = new THREE.InstancedMesh(
 		paperBallGeometry(0.5, 0),
@@ -108,8 +117,10 @@ export function createMultiplayer(
 		const ball = createPaperBall();
 		ball.scale.setScalar(config.plane.scale);
 		ball.visible = false;
+		const shield = createShield();
+		model.mesh.add(shield.mesh);
 		scene.add(model.mesh, ball);
-		r = { model, ball, type: "dart" };
+		r = { model, ball, type: "dart", shield };
 		meshes.set(id, r);
 		return r;
 	}
@@ -122,6 +133,11 @@ export function createMultiplayer(
 				else if (m.t === "shot")
 					shots.push({ p: m.p, prev: [...m.p], v: m.v, age: 0, by: m.id });
 				else if (m.t === "score") events.onScore(m.id, m.id === link?.id);
+				else if (m.t === "it") {
+					const passedByMe = m.from !== undefined && m.from === link?.id;
+					if (passedByMe) immune = TAG_IMMUNE;
+					if (m.id !== null) events.onIt(m.id === link?.id, passedByMe);
+				}
 			});
 		if (!on && link) {
 			link.close();
@@ -145,6 +161,15 @@ export function createMultiplayer(
 		get count() {
 			return link?.players.size ?? 0;
 		},
+
+		/** Your player id in the room (null when offline). */
+		get myId() {
+			return link?.id ?? null;
+		},
+		/** You are the one who is IT in the tag game. */
+		get isIt() {
+			return link?.id != null && link.players.get(link.id)?.it === true;
+		},
 		get score() {
 			return (link?.id != null && link.players.get(link.id)?.score) || 0;
 		},
@@ -154,7 +179,9 @@ export function createMultiplayer(
 			x: number;
 			y: number;
 			z: number;
+
 			colour: string;
+			it: boolean;
 		}[] {
 			const out = [];
 			for (const id of remotes.ids()) {
@@ -165,7 +192,9 @@ export function createMultiplayer(
 					x: pose.p[0],
 					y: pose.p[1],
 					z: pose.p[2],
+
 					colour: link?.players.get(id)?.colour ?? "#ffffff",
+					it: link?.players.get(id)?.it === true,
 				});
 			}
 			return out;
@@ -218,8 +247,10 @@ export function createMultiplayer(
 			return true;
 		},
 		/** Fixed step: move shots, check hits on you, send where you are. */
-		step(dt: number, me: PlayerState, hittable: boolean) {
+
+		step(dt: number, me: PlayerState, hittable: boolean, shielded = false) {
 			clock += dt;
+			immune = Math.max(0, immune - dt);
 			cooldown = Math.max(0, cooldown - dt);
 			shots = stepShots(shots, dt, world.groundAt, world.solidAt);
 			if (!link) return;
@@ -237,8 +268,30 @@ export function createMultiplayer(
 			);
 			if (hit && hit.by !== null) {
 				shots = shots.filter((s) => s !== hit);
-				link.send({ t: "hit", by: hit.by });
-				events.onHit(hit.by);
+				if (shielded)
+					events.onBlock(); // the bubble catches it
+				else {
+					link.send({ t: "hit", by: hit.by });
+					events.onHit(hit.by);
+					return;
+				}
+			}
+			// Tag: if the player who is IT touches you, the tag passes to you.
+			if (shielded || immune > 0) return;
+			for (const pl of link.players.values()) {
+				if (!pl.it || pl.id === link.id) continue;
+				const pose = remotes.sample(pl.id, clock);
+				if (!pose || pose.f & CRASHED) continue;
+				if (
+					Math.hypot(
+						pose.p[0] - me.p[0],
+						pose.p[1] - me.p[1],
+						pose.p[2] - me.p[2],
+					) < TAG_RADIUS
+				) {
+					link.send({ t: "tag", by: pl.id });
+					immune = TAG_IMMUNE;
+				}
 			}
 		},
 		/** Draw other players and the balls in flight. */
@@ -258,7 +311,9 @@ export function createMultiplayer(
 				r.model.mesh.position.fromArray(pose.p);
 				r.ball.position.fromArray(pose.p);
 				r.model.mesh.quaternion.fromArray(pose.q);
+
 				r.model.flutter(time, 0.6);
+				r.shield.update((pose.f & SHIELD) !== 0 && !crashed, 99, time);
 
 				// Trail: drop a dot every so often; forget old ones (and all of them after a crash).
 				const dots = trails.get(id) ?? [];

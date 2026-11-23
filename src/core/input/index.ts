@@ -13,6 +13,9 @@ export interface InputState {
 	boost: boolean;
 	/** Throw a paper ball (multiplayer). */
 	fire?: boolean;
+	/** Dash (burst of speed) and shield (paper bubble). */
+	dash?: boolean;
+	shield?: boolean;
 }
 
 export function createInput(canvas: HTMLElement) {
@@ -27,7 +30,26 @@ export function createInput(canvas: HTMLElement) {
 		el("stick-base"),
 		el("boost-btn"),
 	);
-	const state: InputState = { pitch: 0, roll: 0, boost: false, fire: false };
+	const state: InputState = {
+		pitch: 0,
+		roll: 0,
+		boost: false,
+		fire: false,
+		dash: false,
+		shield: false,
+	};
+	// Touch ability buttons (held = pressed).
+	const held = { dash: false, shield: false };
+	for (const name of ["dash", "shield"] as const) {
+		const b = el(`${name}-btn`);
+		b.addEventListener("pointerdown", () => {
+			held[name] = true;
+		});
+		for (const ev of ["pointerup", "pointercancel", "pointerleave"])
+			b.addEventListener(ev, () => {
+				held[name] = false;
+			});
+	}
 	// Touch fire button: held = keep throwing (the cooldown spaces them out).
 	let touchFire = false;
 	const fireBtn = el("fire-btn");
@@ -53,6 +75,8 @@ export function createInput(canvas: HTMLElement) {
 		settings.controls === "stick" ||
 		settings.controls === "tilt";
 	el("boost-btn").hidden = !touchUi;
+	el("dash-btn").hidden = !touchUi;
+	el("shield-btn").hidden = !touchUi;
 	if (touchUi && settings.controls !== "stick") {
 		addEventListener("touchend", () => tilt.enable(), { once: true });
 	}
@@ -93,6 +117,8 @@ export function createInput(canvas: HTMLElement) {
 			);
 			state.boost = k.boost || mouse.boost || gamepad.boost || touch.boost;
 			state.fire = k.fire || mouse.fire || gamepad.fire || touchFire;
+			state.dash = k.dash || gamepad.dash || held.dash;
+			state.shield = k.shield || gamepad.shield || held.shield;
 			return state;
 		},
 	};

@@ -26,3 +26,10 @@ describe("protocol", () => {
 			expect(parseClient(raw)).toBeNull();
 	});
 });
+
+describe("tag messages", () => {
+	it("accepts a tag and rejects a bad one", () => {
+		expect(parseClient('{"t":"tag","by":2}')).toEqual({ t: "tag", by: 2 });
+		expect(parseClient('{"t":"tag","by":"2"}')).toBeNull();
+	});
+});
